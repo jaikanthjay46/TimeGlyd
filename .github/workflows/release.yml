@@ -44,7 +44,6 @@ jobs:
           cache: 'pnpm' 
 
       - name: Install frontend dependencies
-        # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
         run: pnpm install 
       
       - name: Build the app
@@ -59,8 +58,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }} # This only works if your workflow triggers on new tags.
-          releaseName: 'App Name v__VERSION__' # tauri-action replaces \_\_VERSION\_\_ with the app version.
+          tagName: ${{ github.ref_name }} 
+          releaseName: 'TimeGlyd v__VERSION__' 
           releaseBody: 'See the assets to download and install this version.'
           releaseDraft: true
           prerelease: false
