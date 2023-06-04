@@ -1,0 +1,186 @@
+/* :root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+
+  color: #0f0f0f;
+  background-color: #f6f6f6;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+.container {
+  margin: 0;
+  padding-top: 10vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: 0.75s;
+}
+
+.logo.tauri:hover {
+  filter: drop-shadow(0 0 2em #24c8db);
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #535bf2;
+}
+
+h1 {
+  text-align: center;
+}
+
+input,
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  color: #0f0f0f;
+  background-color: #ffffff;
+  transition: border-color 0.25s;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: #396cd8;
+}
+button:active {
+  border-color: #396cd8;
+  background-color: #e8e8e8;
+}
+
+input,
+button {
+  outline: none;
+}
+
+#greet-input {
+  margin-right: 5px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #f6f6f6;
+    background-color: #2f2f2f;
+  }
+
+  a:hover {
+    color: #24c8db;
+  }
+
+  input,
+  button {
+    color: #ffffff;
+    background-color: #0f0f0f98;
+  }
+  button:active {
+    background-color: #0f0f0f69;
+  }
+} */
+
+
+* { margin:0; padding:0; outline:none; color:#fff; font-weight:400; font-family:-apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', Ubuntu, sans-serif; box-sizing:border-box!important; -webkit-box-sizing:border-box!important; }
+*, *:before, *:after { box-sizing:inherit; -webkit-box-sizing:inherit; }
+html, body { font-size:13px; line-height:100%; -webkit-text-size-adjust:100%; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+button, html input[type='button'], input[type='reset'], input[type='submit'] { -webkit-appearance:button; cursor:pointer; }
+
+.btn { font-weight:400; display:flex; flex-direction:row; align-items:center; color:#fff; width:100%; border:none; line-height:100%; background:transparent; text-align:left; padding:10px 20px; font-size:13px; }
+.btn:hover { background:#33373c; }
+.hidden { display:none!important; }
+
+.titlebar { -webkit-app-region:drag; -webkit-user-select:none; text-align:center; font-size:80%; font-weight:600; padding:10px; opacity:.7; border-bottom:1px solid #222; }
+
+.app { background:#1B1E21; }
+.app section { border-bottom:1px solid rgba(255, 255, 255, .1); }
+.app section:last-of-type { border-bottom:none; }
+
+.search { position:relative; background:transparent; }
+.search input { position:relative; z-index:10; width:100%; background:transparent; font-weight:400; font-size:13px; color:#fff; border:none; padding:10px 20px 10px 40px; background:url('./static/search-darkmode.svg') no-repeat 16px center; background-size:16px 16px; }
+.search label { position:absolute; z-index:9; top:2px; right:0; z-index:9; text-align:right; display:block; width:100%; opacity:.5; padding:10px 15px; font-weight:400; font-size:13px; }
+
+.clock { padding:5px 15px; background:transparent; overflow-y:auto; width: 100%;}
+.clock button { display:flex; flex-direction:row; align-items:center; width:100%; position:relative; text-align:left; font-weight:400; border:none; padding:0 5px; margin:10px 0px; background:transparent; font-size:13px; }
+.clock button time { margin-left:-5px; margin-right:5px; font-weight:500; text-align:center; min-width:70px; border-radius:20px; background-position:8px center; background-repeat:no-repeat; background-size:16px 16px; padding:3px 12px 3px 24px; }
+.clock.ampm button time { min-width:90px; }
+.clock button time.morning { background-color:#F9C133; color:#000; background-image:url('./static/sun-darkmode.svg'); }
+.clock button time.evening { background-color:#2B2E75; color:#fff; background-image:url('./static/moon-darkmode.svg'); }
+.clock button .name { border:1px solid transparent; line-height:100%!important; padding:3px 6px; border-radius:4px; cursor:text; max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.clock button .name.hover { border-color:rgba(255, 255, 255, .15)!important; }
+.clock button .name.focus { text-overflow:clip!important; border-color:rgba(255, 255, 255, .15)!important; }
+.clock button .delete { display:none; margin-left:5px; width:24px; height:24px; background:url('./static/remove-darkmode.svg') no-repeat center center; background-size:16px 16px; }
+.clock button:hover .delete { display:inline-flex; }
+.clock button .eye { margin-left: auto;  width:24px; height:24px; background:url('./static/eye-closed-darkmode.svg') no-repeat center center; background-size:16px 16px; }
+.clock button.active .eye { background-image:url('./static/eye-open-darkmode.svg'); }
+
+.settings button { padding-left:30px; display:flex; flex-direction:row; align-items:center; }
+.settings button:before { content:''; padding-left:8px; min-height:16px; }
+.settings button.active:before { content:''; width:16px; height:16px; margin-left:-18px; margin-right:10px; background:url('./static/check-darkmode.svg') no-repeat center center; background-size:16px 16px; display:inline-block; }
+
+.collapse { border-bottom:none!important; }
+.collapse button.toggle { display:block; line-height:0; border-color:#fff; }
+.collapse button.toggle:before { transform:rotate(180deg); height:8px; display:block; content:''; background:url('./static/collapse-darkmode.svg') no-repeat center center; background-size:16px 16px; }
+.collapse button.toggle.down:before { transform:rotate(0deg); }
+
+.app.tiny .settings { display:none; }
+.app.tiny .we, .app.tiny .quit { display:none; }
+.app.tiny .collapse button.install { background-color:#2662C1; color:#fff; opacity:1; }
+.app.tiny .collapse button.install:before { background-image:url('./static/collapse.svg'); }
+.app.tiny .collapse button.install:hover { background-color:#3b74cf; }
+
+/* .update { padding-left:30px; display:flex; flex-direction:row; align-items:center; } */
+.update:before { content:''; width:16px; height:16px; margin-left:-18px; margin-right:10px; background:url('./static/loading-darkmode.svg') no-repeat center center; background-size:16px 16px; display:inline-block; }
+.update.loading:before { animation: spinner 1.2s linear infinite; }
+.update.install { background-color:#2662C1; color:#fff; }
+.update.install:hover { background-color:#3b74cf; }
+.update.install .version { opacity:.7; }
+.update .version { font-size:10px; margin-left:auto; }
+
+.settings button, .update, .about, .support, .exit { padding-left:30px; }
+.about:before { content:''; width:16px; height:16px; margin-left:-18px; margin-right:10px; background:url('./static/about-darkmode.svg') no-repeat center center; background-size:16px 16px; display:inline-block; }
+.support:before { content:''; width:16px; height:16px; margin-left:-18px; margin-right:10px; background:url('./static/donate-darkmode.svg') no-repeat center center; background-size:16px 16px; display:inline-block; }
+.exit:before { content:''; width:16px; height:16px; margin-left:-18px; margin-right:10px; background:url('./static/exit-darkmode.svg') no-repeat center center; background-size:16px 16px; display:inline-block; }
+
+
+
+.gray { opacity:.3; }
+.clearfix:after { content:''; display:table; clear:both; }
+a, form input[type='submit'], button { transition:all 0.1s linear 0s; }
+b, strong { font-weight:600; }
+::selection { background:#2278FF; }
+
+
+
+@keyframes spinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
