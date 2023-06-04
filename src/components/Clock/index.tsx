@@ -15,7 +15,7 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, is24Hour, clockNa
   const [timeString, setTimeString] = React.useState(formatTimeNow(timezoneOffsetHours * 60 + globalTimeOffsetMinutes, is24Hour));
   const [isMorning, setIsMorning] = React.useState(true);
 
-  const handleNameUpdate = (newName: string) => {
+  const handleNameUpdate = (newName: string|null) => {
     if (!newName) return;
     
     const clocks = settingsManager.getCache('clocks');

@@ -4,7 +4,7 @@ import App from "./App";
 import "./styles.css";
 import { settingsManager } from "./config/settings-manager";
 
-await settingsManager.initialize();
+settingsManager.initialize();
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <App />
