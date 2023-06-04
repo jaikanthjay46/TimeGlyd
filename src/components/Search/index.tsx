@@ -1,7 +1,7 @@
 import { useEffect, useState, KeyboardEvent } from "react";
 import { City, cityMap, searchIndex } from "../../utils/search-index";
 import { convertHourToString } from "../../utils/time";
-import "./search.scss";
+import "./Search.scss";
 import lunr from "lunr";
 import { WallClock, settingsManager } from "../../config/settings-manager";
 
