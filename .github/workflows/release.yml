@@ -32,7 +32,11 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
-
+      
+      - name: Install PNPM
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8.1.0
       - name: Sync node version and setup cache
         uses: actions/setup-node@v3
         with:
