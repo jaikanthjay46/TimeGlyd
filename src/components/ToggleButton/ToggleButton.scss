@@ -1,0 +1,18 @@
+button {
+  &.button-toggle {
+    font-weight: 400;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    color: #fff;
+    width: 100%;
+    border: none;
+    line-height: 100%;
+    background: transparent;
+    text-align: left;
+    padding: 10px 20px 10px 12px;
+    font-size: 13px;
+  }
+
+  &.button-toggle:hover { background:#33373c; }
+}
