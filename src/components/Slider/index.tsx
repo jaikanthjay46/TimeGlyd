@@ -48,7 +48,7 @@ function Slider({ is24Hour, onChange }: Props) {
   return (
     <div className='timeTravelSlider'>
       <input ref={sliderRef} onMouseDown={() => handleOnDrag(true)} onMouseLeave={() => handleOnDrag(false)} onChange={(e) => handleManualSliderChange(e.target.valueAsNumber)} name='slider' type='range' min='0' max='1440' step='1'  value={slider}/>
-      <span className='now' style={{ left: `${slider / 1440 * 100}%` }}>{ time }</span>      
+      <span className='now' style={{ left: `${(slider / 1440) * 100 - (slider > 720 ? 20:0)}%` }}>{ time }</span>      
       <span className='from'>{ is24Hour ? '00:00' : '12:00 AM' }</span>
       <span className='to'>{ is24Hour ? '23:59' : '11:59 PM'  }</span>
       
