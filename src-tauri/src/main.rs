@@ -109,9 +109,7 @@ fn main() {
         // this is a workaround for the window to always show in current workspace.
         // see https://github.com/tauri-apps/tauri/issues/2801
         window.set_always_on_top(true).unwrap();
-        window.open_devtools();
 
-  
         Ok(())
       })
       .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
