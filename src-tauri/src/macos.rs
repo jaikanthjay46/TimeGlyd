@@ -1,10 +1,14 @@
-use tauri::{Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, CustomMenuItem, PhysicalPosition, Window, Runtime};
+use tauri::{Window, Runtime};
 
 #[cfg(target_os = "macos")]
 use cocoa::appkit::{NSWindow, NSWindowButton, NSWindowStyleMask, NSWindowTitleVisibility};
 
 #[cfg(target_os = "macos")]
-use objc::runtime::YES;
+use objc::{
+  msg_send,
+  runtime::{YES},
+  sel, sel_impl,
+};
 
 pub trait WindowExt {
     #[cfg(target_os = "macos")]
@@ -14,6 +18,8 @@ pub trait WindowExt {
 impl<R: Runtime> WindowExt for Window<R> {
     #[cfg(target_os = "macos")]
     fn set_transparent_titlebar(&self, title_transparent: bool, remove_tool_bar: bool) {
+
+
         unsafe {
             let id = self.ns_window().unwrap() as cocoa::base::id;
             NSWindow::setTitlebarAppearsTransparent_(id, cocoa::base::YES);

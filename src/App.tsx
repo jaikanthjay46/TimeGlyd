@@ -32,6 +32,10 @@ function App() {
     }
   }, []);
 
+  useEffect(() => {
+    invoke("init_spotlight_window");
+  }, []);
+
   useRequestAnimationFrame(() => {
     onResize();
   });

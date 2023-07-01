@@ -3,8 +3,7 @@
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build",
     "devPath": "http://localhost:1420",
-    "distDir": "../dist",
-    "withGlobalTauri": false
+    "distDir": "../dist"
   },
   "package": {
     "productName": "TimeGlyd",
@@ -18,7 +17,7 @@
     "allowlist": {
       "all": true,
       "shell": {
-        "all": false,
+        "all": true,
         "open": true
       },
       "fs": {
@@ -53,12 +52,12 @@
     "windows": [
       {
         "fullscreen": false,
-        "resizable": false,
-        "title": "TimeGlyd",
+        "height": 400,
         "width": 360,
-        "alwaysOnTop": true,
-        "minHeight": 200,
-        "visible": false
+        "resizable": false,
+        "visible": false,
+        "decorations": true,
+        "center": true
       }
     ]
   }

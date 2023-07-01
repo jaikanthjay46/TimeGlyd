@@ -1,5 +1,5 @@
 [package]
-name = "TimeGlyd"
+name = "time_glyd"
 version = "0.0.0"
 description = "TimeGlyd - A timezone companion"
 authors = ["you"]
@@ -13,14 +13,19 @@ edition = "2021"
 tauri-build = { version = "1.3", features = [] }
 
 [dependencies]
-tauri = { version = "1.3", features = ["api-all", "system-tray"] }
+tauri = { version = "1.3", features = ["api-all", "icon-png", "system-tray"] }
 tauri-plugin-autostart = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
+# tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-cocoa = "0.24"
-objc = "0.2.7"
+core-graphics = {version = "0.22.3"}
+core-foundation = { version = "0.9.3" }
+cocoa = { version = "0.24.1" }
+objc =  { version = "0.2.7" }
+objc_id = {version = "0.1.1" }
+objc-foundation = { version = "0.1.1" }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
