@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-20.04, windows-latest]
+        platform: [macos-latest]
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -45,6 +45,8 @@ jobs:
 
       - name: Install frontend dependencies
         run: pnpm install 
+      - name: Install Rust Targets
+        run: rustup target add aarch64-apple-darwin
       
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
@@ -63,3 +65,6 @@ jobs:
           releaseBody: 'See the assets to download and install this version.'
           releaseDraft: true
           prerelease: false
+          updaterJsonKeepUniversal: true
+          args: --target universal-apple-darwin
+
