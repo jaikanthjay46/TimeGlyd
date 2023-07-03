@@ -7,7 +7,7 @@
   },
   "package": {
     "productName": "TimeGlyd",
-    "version": "0.0.0-alpha4"
+    "version": "0.0.0-alpha5"
   },
   "tauri": {
     "systemTray": {

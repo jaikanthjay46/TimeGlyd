@@ -15,8 +15,7 @@ import useRequestAnimationFrame from "./hooks/useRequestAnimationFrame";
 import { getVersion } from '@tauri-apps/api/app';
 import {
   checkUpdate,
-  installUpdate,
-  onUpdaterEvent,
+  installUpdate
 } from '@tauri-apps/api/updater'
 import { relaunch } from '@tauri-apps/api/process'
 
