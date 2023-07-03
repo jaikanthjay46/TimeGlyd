@@ -87,7 +87,7 @@ macro_rules! panel {
             .panel
             .clone();
 
-        panel.unwrap()
+        panel
     }};
 }
 
@@ -144,12 +144,16 @@ pub fn init_spotlight_window(app_handle: AppHandle<Wry>, window: Window<Wry>) {
 
 #[tauri::command]
 pub fn show_spotlight(app_handle: AppHandle<Wry>) {
-    panel!(app_handle).show();
+    if let Some(panel) = panel!(app_handle) {
+        panel.show();
+    }
 }
 
 #[tauri::command]
 pub fn hide_spotlight(app_handle: AppHandle<Wry>) {
-    panel!(app_handle).order_out(None);
+    if let Some(panel) = panel!(app_handle) {
+        panel.order_out(None);
+    }
 }
 
 /// Positions a given window at the center of the monitor with cursor
