@@ -7,7 +7,7 @@
   },
   "package": {
     "productName": "TimeGlyd",
-    "version": "0.0.0"
+    "version": "0.0.0-alpha4"
   },
   "tauri": {
     "systemTray": {
@@ -47,7 +47,12 @@
       "csp": null
     },
     "updater": {
-      "active": false
+      "active": true,
+      "dialog": false,
+      "endpoints": [
+        "https://gist.githubusercontent.com/jaikanthjay46/48afb03523c8e7fdb8ed22aad40f49e9/raw/419fe30855f53c54975ad452f2345d199f2aaa29/timeglyd.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ0MDk5MTQ0NTFEMjMzNUYKUldSZk05SlJSSkVKUkQ0RlFSRVhESHhycGYyMVVMTUM2TThncENTUFVHQ1ZnV0hBaElwbkMxQWoK"
     },
     "windows": [
       {

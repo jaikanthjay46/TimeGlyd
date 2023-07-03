@@ -12,6 +12,13 @@ import {
 import ToggleButton from "./components/ToggleButton";
 import { WallClock, settingsManager } from "./config/settings-manager";
 import useRequestAnimationFrame from "./hooks/useRequestAnimationFrame";
+import { getVersion } from '@tauri-apps/api/app';
+import {
+  checkUpdate,
+  installUpdate,
+  onUpdaterEvent,
+} from '@tauri-apps/api/updater'
+import { relaunch } from '@tauri-apps/api/process'
 
 function App() {
   const [globalTimeOffset, setGlobalTimeOffsetMinutes] = useState(0);
@@ -22,6 +29,11 @@ function App() {
   const [clocks, setClocks] = useState<WallClock[]>(
     settingsManager.getCache("clocks")
   );
+  const [version, setVersion] = useState<string>();
+
+  useEffect(() => {
+    getVersion().then(setVersion);
+  }, []);
 
   const heightRef = useRef<number>(300);
   const onResize = useCallback(async () => {
@@ -49,6 +61,19 @@ function App() {
     setIs24Hours(settingsManager.getCache("userSettings.is24Hours"));
     settingsManager.syncCache();
   };
+
+  const checkForUpdate = async () => {
+    try {
+      const { shouldUpdate, manifest } = await checkUpdate()
+      if (shouldUpdate) {
+        setVersion(`Updating to ${manifest?.version}`);
+        await installUpdate()
+        await relaunch()
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   return (
     <div className="app">
@@ -78,24 +103,24 @@ function App() {
         </button>
       </section>
       <section className={isSettingHidden ? "hidden" : ""}>
-        <ToggleButton
+        {/* <ToggleButton
           label={"Date"}
           onEnable={() => updateSettings("showDate", true)}
           onDisable={() => updateSettings("showDate", false)}
           defaultValue={settingsManager.getCache("userSettings.showDate")}
-        />
+        /> */}
         <ToggleButton
           label={"24 Hours"}
           onEnable={() => updateSettings("is24Hours", true)}
           onDisable={() => updateSettings("is24Hours", false)}
           defaultValue={is24Hours}
         />
-        <ToggleButton
+        {/* <ToggleButton
           label={"Compact View"}
           onEnable={() => updateSettings("compactView", true)}
           onDisable={() => updateSettings("compactView", false)}
           defaultValue={settingsManager.getCache("userSettings.compactView")}
-        />
+        /> */}
         <ToggleButton
           label={"Open at Login"}
           onEnable={() => autoStartEnable()}
@@ -103,9 +128,9 @@ function App() {
           defaultValue={autoStartIsEnabled()}
         />
         <section className="settings">
-          <button className="btn update clearfix">
+          <button onClick={() => checkForUpdate()} className="btn update clearfix">
             <span className="update-message">Check for Update</span>
-            <span className="version gray"></span>
+            <span className="version gray">v{version}</span>
           </button>
         </section>
       </section>
