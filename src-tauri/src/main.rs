@@ -24,9 +24,9 @@ fn quit(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-fn set_height(app: tauri::AppHandle, size: f64) {
+fn set_size(app: tauri::AppHandle, height: f64, width: f64) {
     if let Some(panel) = panel!(app) {
-        panel.set_content_size(360.0, size);
+        panel.set_content_size(width, height);
     }
 }
 
@@ -68,7 +68,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             quit,
-            set_height,
+            set_size,
             spotlight::init_spotlight_window,
             spotlight::show_spotlight,
             spotlight::hide_spotlight
