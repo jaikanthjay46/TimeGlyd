@@ -75,10 +75,11 @@ function Search({updateNewClocks}: Props) {
   }, [text]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
-    console.log(event.key)
     if (event.key === "Enter") {
       const clocks = settingsManager.getCache('clocks');
-      clocks.push({clockName: searchResult?.fullName ?? 'UTC', timezoneOffsetHours: searchResult?.timeZoneOffset ?? 0});
+      clocks.push({clockName: searchResult?.fullName ?? 'UTC', 
+      timezoneOffsetHours: searchResult?.timeZoneOffset ?? 0, 
+      timeZoneId: searchResult?.timeZoneId ?? 'UTC'  });
       updateNewClocks(clocks);
       settingsManager.setCache('clocks', clocks);
       settingsManager.syncCache();

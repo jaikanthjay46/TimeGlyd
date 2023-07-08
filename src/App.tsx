@@ -44,13 +44,14 @@ function App() {
     }
   }, []);
 
-  useEffect(() => {
-    invoke("init_spotlight_window");
-  }, []);
-
   useRequestAnimationFrame(() => {
     onResize();
   });
+
+  useEffect(() => {
+    invoke("init_spotlight_window");
+  }, []);
+  
 
   const handleSliderChange = (value: number) => {
     setGlobalTimeOffsetMinutes(value);
@@ -86,6 +87,7 @@ function App() {
             <Clock
               globalTimeOffsetMinutes={globalTimeOffset}
               timezoneOffsetHours={clock.timezoneOffsetHours}
+              timeZoneId={clock.timeZoneId}
               is24Hour={is24Hours}
               clockName={clock.clockName}
               id={index.toString()}
