@@ -36,8 +36,8 @@ function App() {
 
   const heightRef = useRef<number>(300);
   const onResize = useCallback(async () => {
-    const height = document.querySelector("body")?.clientHeight;
-    const width = document.querySelector("body")?.clientWidth;
+    const height = document.querySelector(".app")?.clientHeight;
+    const width = document.querySelector(".app")?.clientWidth;
     if (height && height != heightRef.current) {
       heightRef.current = height;
       await invoke("set_size", { height, width });

@@ -137,8 +137,8 @@ button, html input[type='button'], input[type='reset'], input[type='submit'] { -
 .clock button .name { border:1px solid transparent; line-height:100%!important; padding:3px 6px; border-radius:4px; cursor:text; max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .clock button .name.hover { border-color:rgba(255, 255, 255, .15)!important; }
 .clock button .name.focus { text-overflow:clip!important; border-color:rgba(255, 255, 255, .15)!important; }
-.clock button .delete { display:none; margin-left:5px; width:24px; height:24px; background:url('./static/remove-darkmode.svg') no-repeat center center; background-size:16px 16px; }
-.clock button:hover .delete { display:inline-flex; }
+.clock button .delete { display:inline-flex; visibility: hidden;   margin-left:5px; width:24px; height:24px; background:url('./static/remove-darkmode.svg') no-repeat center center; background-size:16px 16px; }
+.clock button:hover .delete { visibility: visible; }
 .clock button .eye { margin-left: auto;  width:24px; height:24px; background:url('./static/eye-closed-darkmode.svg') no-repeat center center; background-size:16px 16px; }
 .clock button.active .eye { background-image:url('./static/eye-open-darkmode.svg'); }
 
