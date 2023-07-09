@@ -43,7 +43,7 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, timeZoneId, is24H
 
   useEffect(updateLoop, [globalTimeOffsetMinutes, is24Hour])
 
-  useRequestAnimationFrame(updateLoop);
+  useRequestAnimationFrame(updateLoop, [globalTimeOffsetMinutes, is24Hour]);
 
 
   return (
