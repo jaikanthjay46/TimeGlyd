@@ -37,13 +37,14 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, timeZoneId, is24H
   }
 
   const updateLoop = () => {
+    console.log(globalTimeOffsetMinutes)
     setTimeString(timeNow());
     setIsMorning(isSunUpLux(timeZoneId, globalTimeOffsetMinutes))
   }
 
   useEffect(updateLoop, [globalTimeOffsetMinutes, is24Hour])
 
-  useRequestAnimationFrame(updateLoop);
+  useRequestAnimationFrame(updateLoop, [globalTimeOffsetMinutes, is24Hour]);
 
 
   return (
