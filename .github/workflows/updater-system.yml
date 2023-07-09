@@ -1,0 +1,27 @@
+name: updater
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+jobs:
+  updater:
+    runs-on: ubuntu-latest
+    steps:
+      - name: install dependencies (ubuntu only)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+      - name: Fetch JSON
+        id: fetch
+        run: |
+          URL=$(curl -s https://api.github.com/repos/jaikanthjay46/TimeGlyd/releases/latest | jq -r '.assets[] | select( .name | contains("latest.json")).browser_download_url')
+          CONTENT=$(curl -Ls $URL)
+          echo "::set-output name=value::$CONTENT"
+      - name: Gist Write Action
+        uses: sergeysova/gist-write-action@v1.0.0
+        with:
+          gist_id: 48afb03523c8e7fdb8ed22aad40f49e9
+          file_name: timeglyd.json
+          content: ${{steps.fetch.outputs.value}}
+    
+  
