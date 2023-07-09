@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { formatTimeNowLux, isSunUpLux } from "../../utils/time";
 import { WallClock, settingsManager } from "../../config/settings-manager";
 import useRequestAnimationFrame from "../../hooks/useRequestAnimationFrame";
+import './Clock.scss'; 
 
 type Props = {
   globalTimeOffsetMinutes: number;
