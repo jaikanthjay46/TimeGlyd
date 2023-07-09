@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { formatTimeNowLux, isSunUpLux } from "../../utils/time";
 import { WallClock, settingsManager } from "../../config/settings-manager";
+import useRequestAnimationFrame from "../../hooks/useRequestAnimationFrame";
 
 type Props = {
   globalTimeOffsetMinutes: number;
@@ -42,7 +43,7 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, timeZoneId, is24H
 
   useEffect(updateLoop, [globalTimeOffsetMinutes, is24Hour])
 
-  // useRequestAnimationFrame(updateLoop);
+  useRequestAnimationFrame(updateLoop);
 
 
   return (
