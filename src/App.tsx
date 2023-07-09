@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import "./App.scss";
 import Search from "./components/Search";
@@ -13,11 +13,7 @@ import ToggleButton from "./components/ToggleButton";
 import { WallClock, settingsManager } from "./config/settings-manager";
 import useRequestAnimationFrame from "./hooks/useRequestAnimationFrame";
 import { getVersion } from '@tauri-apps/api/app';
-import {
-  checkUpdate,
-  installUpdate
-} from '@tauri-apps/api/updater'
-import { relaunch } from '@tauri-apps/api/process'
+import { simpleUpdateRoutine } from "./utils/update";
 
 function App() {
   const [globalTimeOffset, setGlobalTimeOffsetMinutes] = useState(0);
@@ -30,32 +26,23 @@ function App() {
   );
   const [version, setVersion] = useState<string>();
 
-  useEffect(() => {
+  // Initalise App
+  useLayoutEffect(() => {
+    invoke("init_spotlight_window");
     getVersion().then(setVersion);
   }, []);
 
-  const heightRef = useRef<number>(300);
-  const onResize = useCallback(async () => {
-    const height = document.querySelector(".app")?.clientHeight;
-    const width = document.querySelector(".app")?.clientWidth;
-    if (height && height != heightRef.current) {
-      heightRef.current = height;
+  // React To Window Size Changes
+  const sizeRef = useRef<{height: number, width: number}>({height: 300, width: 300});
+  useRequestAnimationFrame(async () => {
+    const height = document.querySelector(".app")?.clientHeight ?? 300;
+    const width = document.querySelector(".app")?.clientWidth ?? 300;
+    if ((height && height != sizeRef.current.height) || (width && width != sizeRef.current.width)) {
+      sizeRef.current = {height, width};
       await invoke("set_size", { height, width });
     }
   }, []);
-
-  useRequestAnimationFrame(() => {
-    onResize();
-  });
-
-  useEffect(() => {
-    invoke("init_spotlight_window");
-  }, []);
   
-
-  const handleSliderChange = (value: number) => {
-    setGlobalTimeOffsetMinutes(value);
-  };
 
   const updateSettings = (key: string, value: any) => {
     settingsManager.setCache(("userSettings." + key) as any, value);
@@ -63,25 +50,12 @@ function App() {
     settingsManager.syncCache();
   };
 
-  const checkForUpdate = async () => {
-    try {
-      const { shouldUpdate, manifest } = await checkUpdate()
-      if (shouldUpdate) {
-        setVersion(`Updating to ${manifest?.version}`);
-        await installUpdate()
-        await relaunch()
-      }
-    } catch (error) {
-      console.error(error)
-    }
-  }
-
   return (
     <div className="app">
       <Search updateNewClocks={(clocks) => setClocks([...clocks])} />
-      <Slider is24Hour={is24Hours} onChange={handleSliderChange} />
+      <Slider is24Hour={is24Hours} onChange={setGlobalTimeOffsetMinutes} />
 
-      <section className="clearfix clock">
+      <section className="clock">
         {clocks.map((clock, index) => {
           return (
             <Clock
@@ -130,7 +104,7 @@ function App() {
           defaultValue={autoStartIsEnabled()}
         />
         <section className="settings">
-          <button onClick={() => checkForUpdate()} className="btn update clearfix">
+          <button onClick={() => simpleUpdateRoutine(setVersion)} className="btn update clearfix">
             <span className="update-message">Check for Update</span>
             <span className="version gray">v{version}</span>
           </button>

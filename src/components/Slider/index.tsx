@@ -48,7 +48,7 @@ function Slider({ is24Hour, onChange }: Props) {
       return;
     }
     setSlider(getSliderValue());
-  });
+  }, [userDragging]);
 
 
   return (
