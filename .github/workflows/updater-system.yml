@@ -15,10 +15,10 @@ jobs:
         id: fetch
         run: |
           URL=$(curl -s https://api.github.com/repos/jaikanthjay46/TimeGlyd/releases/latest | jq -r '.assets[] | select( .name | contains("latest.json")).browser_download_url')
-          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "value<<$EOF" >> "$GITHUB_OUTPUT"
-          curl -Ls $URL >> "$GITHUB_OUTPUT"
-          echo "$EOF" >> "$GITHUB_OUTPUT"
+          EOFDS=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "latest_json<<$EOFDS" >> "$GITHUB_ENV"
+          curl -Ls $URL >> "$GITHUB_ENV"
+          echo "$EOFDS" >> "$GITHUB_ENV"
       - name: Gist Write Action
         uses: sergeysova/gist-write-action@v1.0.0
         env:
@@ -26,6 +26,6 @@ jobs:
         with:
           gist_id: 48afb03523c8e7fdb8ed22aad40f49e9
           file_name: timeglyd.json
-          content: ${{steps.fetch.outputs.value}}
+          content: "${{ env.latest_json }}"
     
   
