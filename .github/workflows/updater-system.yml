@@ -19,6 +19,8 @@ jobs:
           echo "::set-output name=value::$CONTENT"
       - name: Gist Write Action
         uses: sergeysova/gist-write-action@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         with:
           gist_id: 48afb03523c8e7fdb8ed22aad40f49e9
           file_name: timeglyd.json
