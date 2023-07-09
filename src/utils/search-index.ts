@@ -17,13 +17,16 @@ export interface City {
 
 export function initializeSearchIndex(): lunr.Index {
     const index: lunr.Index = lunr(function () {
-        this.field('city', { boost: 2 });
+        this.field('timezone', {boost: 3});
+        this.field('name', { boost: 3 });
         this.field('country', {boost: 1.5});
+        this.field('city', {boost: 1});
+
     
         this.ref('id');
 
          
-        (cities as City[]).forEach((city) => {
+        (cities as City[]).filter((city) => city.type !== "airport").forEach((city) => {
             this.add(city);
         });
     });
