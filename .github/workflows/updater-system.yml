@@ -7,7 +7,7 @@ jobs:
   updater:
     runs-on: ubuntu-latest
     steps:
-      - name: install dependencies (ubuntu only)
+      - name: install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y jq curl
@@ -20,7 +20,7 @@ jobs:
       - name: Gist Write Action
         uses: sergeysova/gist-write-action@v1.0.0
         env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          GITHUB_TOKEN: ${{secrets.PAT_GIST_TIMEGLYD}}
         with:
           gist_id: 48afb03523c8e7fdb8ed22aad40f49e9
           file_name: timeglyd.json
