@@ -48,13 +48,11 @@ function Search({updateNewClocks}: Props) {
       results = results.sort(function (a, b) {
         const left = cityMap.get(a.ref) ?? { popularity: 0 };
         const right = cityMap.get(b.ref) ?? { popularity: 0 };
-
-        return a.score * left.popularity - b.score * right.popularity;
+        return b.score * right.popularity - a.score * left.popularity;
       });
     } catch {
       results = [];
     }
-    // console.log(results);
     const city =
       results.length > 0
         ? cityMap.get(results[0].ref)
