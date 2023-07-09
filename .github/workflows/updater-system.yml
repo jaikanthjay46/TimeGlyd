@@ -19,6 +19,7 @@ jobs:
           echo "latest_json<<$EOFDS" >> "$GITHUB_ENV"
           curl -Ls $URL >> "$GITHUB_ENV"
           echo "$EOFDS" >> "$GITHUB_ENV"
+          cat $GITHUB_ENV
       - name: Gist Write Action
         uses: sergeysova/gist-write-action@v1.0.0
         env:
