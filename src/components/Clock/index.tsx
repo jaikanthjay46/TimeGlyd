@@ -37,7 +37,6 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, timeZoneId, is24H
   }
 
   const updateLoop = () => {
-    console.log(globalTimeOffsetMinutes)
     setTimeString(timeNow());
     setIsMorning(isSunUpLux(timeZoneId, globalTimeOffsetMinutes))
   }
