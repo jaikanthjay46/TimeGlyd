@@ -65,8 +65,33 @@ jobs:
           tagName: ${{ github.ref_name }} 
           releaseName: 'TimeGlyd v__VERSION__' 
           releaseBody: 'See the assets to download and install this version.'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           updaterJsonKeepUniversal: true
           args: --target universal-apple-darwin
+  updater:
+    needs: [release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+      - name: Fetch JSON
+        id: fetch
+        run: |
+          URL=$(curl -s https://api.github.com/repos/jaikanthjay46/TimeGlyd/releases/latest | jq -r '.assets[] | select( .name | contains("latest.json")).browser_download_url')
+          EOFDS=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "latest_json<<$EOFDS" >> "$GITHUB_ENV"
+          curl -Ls $URL >> "$GITHUB_ENV"
+          echo "" >> "$GITHUB_ENV"
+          echo "$EOFDS" >> "$GITHUB_ENV"
+      - name: Gist Write Action
+        uses: sergeysova/gist-write-action@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{secrets.PAT_GIST_TIMEGLYD}}
+        with:
+          gist_id: 48afb03523c8e7fdb8ed22aad40f49e9
+          file_name: timeglyd.json
+          content: "${{ env.latest_json }}"
 
