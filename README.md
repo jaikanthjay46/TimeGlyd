@@ -2,7 +2,9 @@
 
 ## Description
 
-TimeGlyd is a small, swift, secure, and offline-friendly utility app designed for distributed teams. It helps remote teams navigate time zones with ease and privacy. The app runs entirely offline, doesn't make any SQL calls, and doesn't collect any data. TimeGlyd is your invisible and trustworthy companion in the world of remote work.
+TimeGlyd is a small, swift, secure, and offline-friendly utility app designed for distributed teams. It leverages technologies such as [Tauri](https://github.com/tauri-apps/tauri), [React](https://github.com/facebook/react), and [Lunr.js](https://github.com/olivernn/lunr.js) to achieve a smaller and all-offline experience. 
+
+TimeGlyd helps remote teams navigate time zones with ease and privacy. The app runs entirely offline, doesn't make any SQL calls, and doesn't collect any data. TimeGlyd is your invisible and trustworthy companion in the world of remote work.
 
 ### Features
 
