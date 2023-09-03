@@ -18,6 +18,16 @@ TimeGlyd helps remote teams navigate time zones with ease and privacy. The app r
 
 ## Getting Started
 
+Note: precompiled binaries are available for MacOS only.
+
+To quickly start using TimeGlyd, follow these steps:
+
+1. Download the universal binary from [https://timeglyd.jaikanthj.com](https://timeglyd.jaikanthj.com).
+2. Double click the dmg to lauch finder
+3. Drag and Drop to your applications folder and launch using spotlight.
+
+## Development
+
 To get started with TimeGlyd, follow these steps:
 
 1. Install the dependencies: `pnpm install`
