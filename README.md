@@ -12,7 +12,7 @@ TimeGlyd is a small, swift, secure, and offline-friendly utility app designed fo
 - Versatile time format: Switch between 24-hour and AM/PM styles in a single touch for your convenience.
 - Uncompromised privacy: TimeGlyd doesn't call home for anything. There is no data collection or telemetry, ensuring top-notch security and complete offline functionality, even offline search.
 - Regular updates: The app is constantly improving based on user feedback. Your needs shape the future updates of TimeGlyd.
-- Ultra-lightweight: Weighing just 10MB, TimeGlyd is a feather-light yet mighty force compared to the bulky ~200MB apps. It provides more efficiency with less storage.
+- Ultra-lightweight: Weighing just 10MB, TimeGlyd is a feather-light yet mighty force compared to the bulky ~200MB electron apps. It provides more efficiency with less storage.
 
 ## Getting Started
 
