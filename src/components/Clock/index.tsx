@@ -3,6 +3,7 @@ import { formatTimeNowLux, isSunUpLux } from "../../utils/time";
 import { WallClock, settingsManager } from "../../config/settings-manager";
 import useRequestAnimationFrame from "../../hooks/useRequestAnimationFrame";
 import './Clock.scss'; 
+import { useDebounce } from "../../hooks/useDebounce";
 
 type Props = {
   globalTimeOffsetMinutes: number;
@@ -21,19 +22,20 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, timeZoneId, is24H
   const [timeString, setTimeString] = React.useState(timeNow());
   const [isMorning, setIsMorning] = React.useState(true);
 
-  const handleNameUpdate = (newName: string|null) => {
+  const handleNameUpdate = async (newName: string|null) => {
     if (!newName) return;
     
     const clocks = settingsManager.getCache('clocks');
     clocks[parseInt(id)].clockName = newName;
-    settingsManager.setCache('clocks', clocks);
+    await settingsManager.set('clocks', clocks);
     updateNewClocks(clocks);
   }
 
-  const deleteClock = () => {
+  const deleteClock = async () => {
     const clocks = settingsManager.getCache('clocks');
     clocks.splice(parseInt(id), 1)
-    settingsManager.setCache('clocks', clocks);
+    await settingsManager.set('clocks', clocks);
+    console.log(clocks);
     updateNewClocks(clocks)
   }
 
@@ -42,10 +44,16 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, timeZoneId, is24H
     setIsMorning(isSunUpLux(timeZoneId, globalTimeOffsetMinutes))
   }
 
-  useEffect(updateLoop, [globalTimeOffsetMinutes, is24Hour])
+  
 
-  useRequestAnimationFrame(updateLoop, [globalTimeOffsetMinutes, is24Hour]);
 
+  useEffect(updateLoop, [globalTimeOffsetMinutes, is24Hour, timeZoneId, clockName])
+
+  useRequestAnimationFrame(updateLoop, [globalTimeOffsetMinutes, is24Hour, timeZoneId, clockName]);
+
+  const debouncedHandleNameUpdate = useDebounce((value: string | null) => {
+    handleNameUpdate(value)
+  }, 500);
 
   return (
       <button>
@@ -53,6 +61,7 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, timeZoneId, is24H
         <span
           className="name"
           onBlur={(e) => handleNameUpdate(e.currentTarget.textContent)}
+          onKeyUp={(e) => debouncedHandleNameUpdate(e.currentTarget.textContent)}
           contentEditable="true"
           spellCheck="false"
         >
