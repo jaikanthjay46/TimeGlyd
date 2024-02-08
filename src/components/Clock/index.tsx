@@ -3,7 +3,7 @@ import { formatTimeNowLux, isSunUpLux } from "../../utils/time";
 import { WallClock, settingsManager } from "../../config/settings-manager";
 import useRequestAnimationFrame from "../../hooks/useRequestAnimationFrame";
 import './Clock.scss'; 
-import { useDebounce } from "../../hooks/useDebounce";
+import { useDebounceCallback } from 'usehooks-ts'
 
 type Props = {
   globalTimeOffsetMinutes: number;
@@ -51,7 +51,7 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, timeZoneId, is24H
 
   useRequestAnimationFrame(updateLoop, [globalTimeOffsetMinutes, is24Hour, timeZoneId, clockName]);
 
-  const debouncedHandleNameUpdate = useDebounce((value: string | null) => {
+  const debouncedHandleNameUpdate = useDebounceCallback((value: string | null) => {
     handleNameUpdate(value)
   }, 500);
 
