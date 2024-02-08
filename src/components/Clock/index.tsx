@@ -51,9 +51,7 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, timeZoneId, is24H
 
   useRequestAnimationFrame(updateLoop, [globalTimeOffsetMinutes, is24Hour, timeZoneId, clockName]);
 
-  const debouncedHandleNameUpdate = useDebounceCallback((value: string | null) => {
-    handleNameUpdate(value)
-  }, 500);
+  const debouncedHandleNameUpdate = useDebounceCallback(handleNameUpdate, 3000);
 
   return (
       <button>
