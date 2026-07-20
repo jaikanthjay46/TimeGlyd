@@ -1,7 +1,4 @@
-use std::{
-    ffi::c_void,
-    sync::{Mutex, Once},
-};
+use std::{ffi::c_void, sync::Mutex};
 
 use objc_id::{Id, ShareId};
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, Runtime, Window, Wry};
@@ -31,6 +28,7 @@ extern "C" {
 #[derive(Default)]
 pub struct Store {
     pub panel: Option<ShareId<RawNSPanel>>,
+    pub global_click_monitor_installed: bool,
 }
 
 #[derive(Default)]
@@ -92,16 +90,27 @@ macro_rules! panel {
     }};
 }
 
-static INIT: Once = Once::new();
 #[allow(dead_code)]
 static PANEL_LABEL: &str = "main";
 
 #[tauri::command]
-pub fn init_spotlight_window(app_handle: AppHandle<Wry>, window: Window<Wry>) {
-    INIT.call_once(|| {
-        set_state!(app_handle, panel, Some(create_spotlight_panel(&window)));
-        // register_shortcut(app_handle);
-    });
+pub fn init_spotlight_window(
+    app_handle: AppHandle<Wry>,
+    window: Window<Wry>,
+) -> Result<(), String> {
+    let state = app_handle.state::<State>();
+    let mut store = state.0.lock().unwrap();
+
+    if store.panel.is_none() {
+        store.panel = Some(create_spotlight_panel(&window));
+    }
+
+    if !store.global_click_monitor_installed {
+        install_global_click_monitor(store.panel.as_ref().unwrap().clone())?;
+        store.global_click_monitor_installed = true;
+    }
+
+    Ok(())
 }
 
 // fn register_shortcut(app_handle: AppHandle<Wry>) {
@@ -303,21 +312,6 @@ mod tests {
     }
 
     #[test]
-    fn panel_overrides_key_window_resignation() {
-        let selector = sel!(resignKeyWindow);
-        let panel_implementation = RawNSPanel::get_class()
-            .instance_method(selector)
-            .unwrap()
-            .implementation() as usize;
-        let default_implementation = class!(NSPanel)
-            .instance_method(selector)
-            .unwrap()
-            .implementation() as usize;
-
-        assert_ne!(panel_implementation, default_implementation);
-    }
-
-    #[test]
     fn observes_outside_mouse_down_events() {
         let mask = dismissal_event_mask();
 
@@ -365,10 +359,6 @@ impl RawNSPanel {
             cls.add_method(
                 sel!(canBecomeKeyWindow),
                 Self::can_become_key_window as extern "C" fn(&Object, Sel) -> BOOL,
-            );
-            cls.add_method(
-                sel!(resignKeyWindow),
-                Self::resign_key_window as extern "C" fn(&Object, Sel),
             );
         }
 
@@ -428,13 +418,6 @@ impl RawNSPanel {
     /// Returns YES to ensure that RawNSPanel can become a key window
     extern "C" fn can_become_key_window(_: &Object, _: Sel) -> BOOL {
         YES
-    }
-
-    extern "C" fn resign_key_window(this: &Object, _: Sel) {
-        unsafe {
-            let _: () = msg_send![super(this, class!(NSPanel)), resignKeyWindow];
-            let _: () = msg_send![this, orderOut: nil];
-        }
     }
 }
 unsafe impl Message for RawNSPanel {}
@@ -509,7 +492,7 @@ fn dismissal_event_mask() -> NSEventMask {
         | NSEventMask::NSOtherMouseDownMask
 }
 
-fn install_global_click_monitor(panel: ShareId<RawNSPanel>) {
+fn install_global_click_monitor(panel: ShareId<RawNSPanel>) -> Result<(), String> {
     let handler = ConcreteBlock::new(move |_: id| {
         if panel.is_visible() {
             panel.order_out(None);
@@ -525,10 +508,11 @@ fn install_global_click_monitor(panel: ShareId<RawNSPanel>) {
         ]
     };
 
-    assert!(
-        monitor != nil,
-        "failed to install global mouse monitor for panel dismissal"
-    );
+    if monitor == nil {
+        return Err("failed to install global mouse monitor for panel dismissal".into());
+    }
+
+    Ok(())
 }
 
 fn create_spotlight_panel(window: &Window<Wry>) -> ShareId<RawNSPanel> {
@@ -550,8 +534,6 @@ fn create_spotlight_panel(window: &Window<Wry>) -> ShareId<RawNSPanel> {
 
     // Ensures panel does not activate
     // panel.set_style_mask(NSWindowStyleMaskNonActivatingPanel);
-
-    install_global_click_monitor(panel.clone());
 
     panel
 }

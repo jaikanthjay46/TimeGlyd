@@ -28,7 +28,9 @@ function App() {
 
   // Initalise App
   useLayoutEffect(() => {
-    invoke("init_spotlight_window");
+    invoke("init_spotlight_window").catch((error) => {
+      console.error("Failed to initialise the menu bar panel", error);
+    });
     getVersion().then((appVersion) => {
       setVersion(
         import.meta.env.VITE_LOCAL_BUILD_REVISION
