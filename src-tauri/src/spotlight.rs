@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, Runtime, Window,
 use cocoa::{
     appkit::{CGFloat, NSMainMenuWindowLevel, NSWindow, NSWindowCollectionBehavior},
     base::{id, nil, BOOL, NO, YES},
-    foundation::{NSPoint, NSRect},
+    foundation::{NSPoint, NSRect, NSSize},
 };
 use objc::{
     class,
@@ -91,27 +91,6 @@ macro_rules! panel {
     }};
 }
 
-#[macro_export]
-macro_rules! nsstring_to_string {
-    ($ns_string:expr) => {{
-        use objc::{sel, sel_impl};
-        let utf8: id = unsafe { objc::msg_send![$ns_string, UTF8String] };
-        let string = if !utf8.is_null() {
-            Some(unsafe {
-                {
-                    std::ffi::CStr::from_ptr(utf8 as *const std::ffi::c_char)
-                        .to_string_lossy()
-                        .into_owned()
-                }
-            })
-        } else {
-            None
-        };
-
-        string
-    }};
-}
-
 static INIT: Once = Once::new();
 #[allow(dead_code)]
 static PANEL_LABEL: &str = "main";
@@ -181,30 +160,45 @@ pub fn position_window_near_position(
     size: PhysicalSize<f64>,
 ) {
     if let Some(monitor) = get_monitor_with_cursor() {
-        let display_size = monitor.size.to_logical::<f64>(monitor.scale_factor);
-        // let display_pos = monitor.position.to_logical::<f64>(monitor.scale_factor);
-        let logical_position = position.to_logical::<f64>(monitor.scale_factor);
-        let log_size = size.to_logical::<f64>(monitor.scale_factor);
-
         let handle: id = window.ns_window().unwrap() as _;
         let win_frame: NSRect = unsafe { handle.frame() };
+        let origin = panel_origin(
+            position,
+            size,
+            monitor.scale_factor,
+            monitor.visible_frame,
+            win_frame.size,
+        );
         let rect = NSRect {
-            origin: NSPoint {
-                x: logical_position.x - (win_frame.size.width / 2.0) + (log_size.width / 2.0),
-                y: display_size.height,
-            },
+            origin,
             size: win_frame.size,
         };
         let _: () = unsafe { msg_send![handle, setFrame: rect display: YES] };
     }
 }
 
+fn panel_origin(
+    tray_position: PhysicalPosition<f64>,
+    tray_size: PhysicalSize<f64>,
+    scale_factor: f64,
+    visible_frame: NSRect,
+    panel_size: NSSize,
+) -> NSPoint {
+    let tray_position = tray_position.to_logical::<f64>(scale_factor);
+    let tray_size = tray_size.to_logical::<f64>(scale_factor);
+    let desired_x = tray_position.x + (tray_size.width / 2.0) - (panel_size.width / 2.0);
+    let min_x = visible_frame.origin.x;
+    let max_x = (visible_frame.origin.x + visible_frame.size.width - panel_size.width).max(min_x);
+
+    NSPoint {
+        x: desired_x.clamp(min_x, max_x),
+        // visibleFrame uses global Cocoa coordinates and excludes the menu bar.
+        y: visible_frame.origin.y + visible_frame.size.height - panel_size.height,
+    }
+}
+
 struct Monitor {
-    #[allow(dead_code)]
-    pub name: Option<String>,
-    pub size: PhysicalSize<u32>,
-    #[allow(dead_code)]
-    pub position: PhysicalPosition<i32>,
+    pub visible_frame: NSRect,
     pub scale_factor: f64,
 }
 
@@ -214,10 +208,9 @@ fn get_monitor_with_cursor() -> Option<Monitor> {
         let mouse_location: NSPoint = unsafe { msg_send![class!(NSEvent), mouseLocation] };
         let screens: id = unsafe { msg_send![class!(NSScreen), screens] };
         let screens_iter: id = unsafe { msg_send![screens, objectEnumerator] };
-        let mut next_screen: id;
 
-        let frame_with_cursor: Option<NSRect> = loop {
-            next_screen = unsafe { msg_send![screens_iter, nextObject] };
+        let screen_with_cursor: Option<id> = loop {
+            let next_screen: id = unsafe { msg_send![screens_iter, nextObject] };
             if next_screen == nil {
                 break None;
             }
@@ -226,32 +219,87 @@ fn get_monitor_with_cursor() -> Option<Monitor> {
             let is_mouse_in_screen_frame: BOOL =
                 unsafe { NSMouseInRect(mouse_location, frame, NO) };
             if is_mouse_in_screen_frame == YES {
-                break Some(frame);
+                break Some(next_screen);
             }
         };
 
-        if let Some(frame) = frame_with_cursor {
-            let name: id = unsafe { msg_send![next_screen, localizedName] };
-            let screen_name = nsstring_to_string!(name);
-            let scale_factor: CGFloat = unsafe { msg_send![next_screen, backingScaleFactor] };
+        if let Some(screen) = screen_with_cursor {
+            let visible_frame: NSRect = unsafe { msg_send![screen, visibleFrame] };
+            let scale_factor: CGFloat = unsafe { msg_send![screen, backingScaleFactor] };
             let scale_factor: f64 = scale_factor;
 
             return Some(Monitor {
-                name: screen_name,
-                position: PhysicalPosition {
-                    x: (frame.origin.x * scale_factor) as i32,
-                    y: (frame.origin.y * scale_factor) as i32,
-                },
-                size: PhysicalSize {
-                    width: (frame.size.width * scale_factor) as u32,
-                    height: (frame.size.height * scale_factor) as u32,
-                },
+                visible_frame,
                 scale_factor,
             });
         }
 
         None
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rect(x: f64, y: f64, width: f64, height: f64) -> NSRect {
+        NSRect {
+            origin: NSPoint { x, y },
+            size: NSSize { width, height },
+        }
+    }
+
+    #[test]
+    fn positions_panel_below_menu_bar_on_retina_display() {
+        let origin = panel_origin(
+            PhysicalPosition::new(2200.0, 48.0),
+            PhysicalSize::new(48.0, 48.0),
+            2.0,
+            rect(0.0, 0.0, 1512.0, 956.0),
+            NSSize::new(360.0, 400.0),
+        );
+
+        assert_eq!(origin.x, 932.0);
+        assert_eq!(origin.y, 556.0);
+    }
+
+    #[test]
+    fn respects_secondary_display_origin() {
+        let origin = panel_origin(
+            PhysicalPosition::new(-1200.0, 48.0),
+            PhysicalSize::new(48.0, 48.0),
+            2.0,
+            rect(-1440.0, -1080.0, 1440.0, 1055.0),
+            NSSize::new(360.0, 400.0),
+        );
+
+        assert_eq!(origin.x, -768.0);
+        assert_eq!(origin.y, -425.0);
+    }
+
+    #[test]
+    fn keeps_panel_inside_visible_screen_edges() {
+        let visible_frame = rect(0.0, 0.0, 1512.0, 956.0);
+        let panel_size = NSSize::new(360.0, 400.0);
+
+        let left = panel_origin(
+            PhysicalPosition::new(0.0, 48.0),
+            PhysicalSize::new(48.0, 48.0),
+            2.0,
+            visible_frame,
+            panel_size,
+        );
+        let right = panel_origin(
+            PhysicalPosition::new(3000.0, 48.0),
+            PhysicalSize::new(48.0, 48.0),
+            2.0,
+            visible_frame,
+            panel_size,
+        );
+
+        assert_eq!(left.x, 0.0);
+        assert_eq!(right.x, 1152.0);
+    }
 }
 
 extern "C" {
