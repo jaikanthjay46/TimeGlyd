@@ -45,7 +45,7 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install 
       - name: Install Rust Targets
-        run: rustup target add aarch64-apple-darwin
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
       - name: Build the app
         run: pnpm tauri build --target universal-apple-darwin
         env:
