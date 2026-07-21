@@ -28,7 +28,7 @@ function App() {
     settingsManager.getCache("clocks")
   );
   const [globalShortcut, setGlobalShortcut] = useState(
-    settingsManager.getCache("globalShortcut")
+    settingsManager.getCache("globalShortcut") || null
   );
   const [shortcutError, setShortcutError] = useState<string>();
   const [isShortcutInitializing, setIsShortcutInitializing] =

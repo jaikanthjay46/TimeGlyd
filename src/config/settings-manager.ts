@@ -16,7 +16,7 @@ export type AppSettings = {
   version: string;
   userSettings: UserPreferences;
   clocks: WallClock[];
-  globalShortcut: string | null;
+  globalShortcut: string;
 };
 
 const defaultSettings: AppSettings = {
@@ -39,13 +39,27 @@ const defaultSettings: AppSettings = {
       timeZoneId: "America/Los_Angeles",
     },
   ],
-  globalShortcut: null,
+  // tauri-settings treats null as a missing key.
+  globalShortcut: "",
 };
 
 export const settingsManager = new SettingsManager<AppSettings>(
   defaultSettings,
   {}
 );
+
+export const initializeSettings = async () => {
+  const settings = (await settingsManager.initialize()) as AppSettings & {
+    globalShortcut?: unknown;
+  };
+
+  if (typeof settings.globalShortcut !== "string") {
+    settingsManager.settings.globalShortcut = "";
+    await settingsManager.syncCache();
+  }
+
+  return settingsManager.settings;
+};
 
 let pendingSettingsTransaction: Promise<void> = Promise.resolve();
 

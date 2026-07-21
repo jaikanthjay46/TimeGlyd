@@ -124,6 +124,10 @@ button, html input[type='button'], input[type='reset'], input[type='submit'] { -
 .app section { border-bottom:1px solid rgba(255, 255, 255, .1); }
 .app section:last-of-type { border-bottom:none; }
 
+.startup-error { min-height:160px; padding:24px 20px; background:#1B1E21; display:flex; flex-direction:column; gap:10px; }
+.startup-error strong { font-weight:600; }
+.startup-error span { color:#ff9b94; font-size:11px; line-height:1.4; overflow-wrap:anywhere; }
+
 .search { position:relative; background:transparent; }
 .search input { position:relative; z-index:10; width:100%; background:transparent; font-weight:400; font-size:13px; color:#fff; border:none; padding:10px 20px 10px 40px; background:url('./static/search-darkmode.svg') no-repeat 16px center; background-size:16px 16px; }
 .search label { position:absolute; z-index:9; top:2px; right:0; z-index:9; text-align:right; display:block; width:100%; opacity:.5; padding:10px 15px; font-weight:400; font-size:13px; }

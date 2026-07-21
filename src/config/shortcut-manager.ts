@@ -16,7 +16,7 @@ let dirtyActiveShortcut: string | null | undefined;
 
 const persistActiveShortcut = async (active: string | null) => {
   await updateSettings((settings) => {
-    settings.globalShortcut = active;
+    settings.globalShortcut = active ?? "";
   });
   dirtyActiveShortcut = undefined;
 };
@@ -24,7 +24,8 @@ const persistActiveShortcut = async (active: string | null) => {
 export const updateGlobalShortcut = async (
   requested: string | null
 ): Promise<ShortcutUpdate> => {
-  const previousPersisted = settingsManager.getCache("globalShortcut");
+  const previousPersisted =
+    settingsManager.getCache("globalShortcut") || null;
   const update = await invokeShortcutUpdate(requested);
 
   if (
@@ -87,7 +88,7 @@ export const initializeGlobalShortcut = () => {
     initialization = (async () => {
       await invoke<void>("init_spotlight_window");
       return updateGlobalShortcut(
-        settingsManager.getCache("globalShortcut")
+        settingsManager.getCache("globalShortcut") || null
       );
     })().catch((error) => {
       initialization = undefined;

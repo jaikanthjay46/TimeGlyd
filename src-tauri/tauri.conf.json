@@ -60,9 +60,10 @@
         "height": 400,
         "width": 360,
         "resizable": false,
-        "visible": false,
+        "visible": true,
         "decorations": true,
-        "center": true
+        "center": true,
+        "title": "TimeGlyd"
       }
     ]
   }

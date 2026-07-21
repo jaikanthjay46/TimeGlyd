@@ -70,6 +70,68 @@ impl ShortcutUpdate {
     }
 }
 
+fn status_item_panel_origin(
+    status_frame: NSRect,
+    visible_frame: NSRect,
+    panel_size: NSSize,
+) -> NSPoint {
+    let desired_x =
+        status_frame.origin.x + (status_frame.size.width / 2.0) - (panel_size.width / 2.0);
+    let min_x = visible_frame.origin.x;
+    let max_x = (visible_frame.origin.x + visible_frame.size.width - panel_size.width).max(min_x);
+
+    NSPoint {
+        x: desired_x.clamp(min_x, max_x),
+        y: visible_frame.origin.y + visible_frame.size.height - panel_size.height,
+    }
+}
+
+fn get_monitor_containing_point(point: NSPoint) -> Option<Monitor> {
+    objc::rc::autoreleasepool(|| {
+        let screens: id = unsafe { msg_send![class!(NSScreen), screens] };
+        let screens_iter: id = unsafe { msg_send![screens, objectEnumerator] };
+
+        loop {
+            let screen: id = unsafe { msg_send![screens_iter, nextObject] };
+            if screen == nil {
+                return None;
+            }
+
+            let frame: NSRect = unsafe { msg_send![screen, frame] };
+            if unsafe { NSMouseInRect(point, frame, NO) } == YES {
+                return Some(monitor_from_screen(screen));
+            }
+        }
+    })
+}
+
+fn get_status_item_frame() -> Option<NSRect> {
+    const NS_STATUS_WINDOW_LEVEL: i32 = 25;
+    const MAX_STATUS_ITEM_WIDTH: f64 = 100.0;
+
+    objc::rc::autoreleasepool(|| {
+        let app: id = unsafe { msg_send![class!(NSApplication), sharedApplication] };
+        let windows: id = unsafe { msg_send![app, windows] };
+        let count: usize = unsafe { msg_send![windows, count] };
+
+        for index in 0..count {
+            let window: id = unsafe { msg_send![windows, objectAtIndex: index] };
+            let level: i32 = unsafe { msg_send![window, level] };
+            let frame: NSRect = unsafe { msg_send![window, frame] };
+
+            if level == NS_STATUS_WINDOW_LEVEL
+                && frame.size.width > 0.0
+                && frame.size.width <= MAX_STATUS_ITEM_WIDTH
+                && frame.size.height > 0.0
+            {
+                return Some(frame);
+            }
+        }
+
+        None
+    })
+}
+
 #[macro_export]
 macro_rules! set_state {
     ($app_handle:expr, $field:ident, $value:expr) => {{
@@ -360,10 +422,32 @@ fn toggle_spotlight_panel(panel: &RawNSPanel) {
         return;
     }
 
-    if let Err(error) = position_panel_on_pointer_display(panel) {
-        eprintln!("TimeGlyd shortcut positioning warning: {error}");
+    if let Err(status_error) = position_panel_near_status_item(panel) {
+        if let Err(fallback_error) = position_panel_on_pointer_display(panel) {
+            eprintln!(
+                "TimeGlyd shortcut positioning warning: {status_error}; fallback: {fallback_error}"
+            );
+        }
     }
     panel.show();
+}
+
+fn position_panel_near_status_item(panel: &RawNSPanel) -> Result<(), String> {
+    let status_frame =
+        get_status_item_frame().ok_or_else(|| "menu-bar icon frame is unavailable".to_string())?;
+    let status_center = NSPoint {
+        x: status_frame.origin.x + (status_frame.size.width / 2.0),
+        y: status_frame.origin.y + (status_frame.size.height / 2.0),
+    };
+    let monitor = get_monitor_containing_point(status_center)
+        .or_else(get_primary_monitor)
+        .ok_or_else(|| "menu-bar display is unavailable".to_string())?;
+    let panel_frame = panel.frame();
+    panel.set_frame(NSRect {
+        origin: status_item_panel_origin(status_frame, monitor.visible_frame, panel_frame.size),
+        size: panel_frame.size,
+    });
+    Ok(())
 }
 
 fn position_panel_on_pointer_display(panel: &RawNSPanel) -> Result<(), String> {
@@ -416,6 +500,17 @@ pub fn position_window_near_position(
         };
         let _: () = unsafe { msg_send![handle, setFrame: rect display: YES] };
     }
+}
+
+pub fn hide_window(window: &Window<Wry>) {
+    let handle: id = window.ns_window().unwrap() as _;
+    let _: () = unsafe { msg_send![handle, orderOut: nil] };
+}
+
+pub fn is_window_visible(window: &Window<Wry>) -> bool {
+    let handle: id = window.ns_window().unwrap() as _;
+    let visible: BOOL = unsafe { msg_send![handle, isVisible] };
+    visible == YES
 }
 
 fn panel_origin(
@@ -548,6 +643,18 @@ mod tests {
 
         assert_eq!(origin.x, -900.0);
         assert_eq!(origin.y, -752.5);
+    }
+
+    #[test]
+    fn positions_shortcut_panel_below_status_item() {
+        let origin = status_item_panel_origin(
+            rect(800.0, 956.0, 18.0, 24.0),
+            rect(0.0, 0.0, 1512.0, 956.0),
+            NSSize::new(360.0, 400.0),
+        );
+
+        assert_eq!(origin.x, 629.0);
+        assert_eq!(origin.y, 556.0);
     }
 
     #[test]
