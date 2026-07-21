@@ -3458,6 +3458,7 @@ dependencies = [
 name = "time_glyd"
 version = "0.0.0"
 dependencies = [
+ "block",
  "cocoa",
  "core-foundation",
  "core-graphics",

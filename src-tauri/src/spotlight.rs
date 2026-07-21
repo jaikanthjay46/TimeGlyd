@@ -1,13 +1,11 @@
-use std::{
-    ffi::c_void,
-    sync::{Mutex, Once},
-};
+use std::{ffi::c_void, sync::Mutex};
 
 use objc_id::{Id, ShareId};
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, Runtime, Window, Wry};
 
+use block::ConcreteBlock;
 use cocoa::{
-    appkit::{CGFloat, NSMainMenuWindowLevel, NSWindow, NSWindowCollectionBehavior},
+    appkit::{CGFloat, NSEventMask, NSMainMenuWindowLevel, NSWindow, NSWindowCollectionBehavior},
     base::{id, nil, BOOL, NO, YES},
     foundation::{NSPoint, NSRect, NSSize},
 };
@@ -15,7 +13,7 @@ use objc::{
     class,
     declare::ClassDecl,
     msg_send,
-    runtime::{self, Class, Object, Protocol, Sel},
+    runtime::{self, Class, Object, Sel},
     sel, sel_impl, Message,
 };
 use objc_foundation::INSObject;
@@ -30,6 +28,7 @@ extern "C" {
 #[derive(Default)]
 pub struct Store {
     pub panel: Option<ShareId<RawNSPanel>>,
+    pub global_click_monitor_installed: bool,
 }
 
 #[derive(Default)]
@@ -91,16 +90,27 @@ macro_rules! panel {
     }};
 }
 
-static INIT: Once = Once::new();
 #[allow(dead_code)]
 static PANEL_LABEL: &str = "main";
 
 #[tauri::command]
-pub fn init_spotlight_window(app_handle: AppHandle<Wry>, window: Window<Wry>) {
-    INIT.call_once(|| {
-        set_state!(app_handle, panel, Some(create_spotlight_panel(&window)));
-        // register_shortcut(app_handle);
-    });
+pub fn init_spotlight_window(
+    app_handle: AppHandle<Wry>,
+    window: Window<Wry>,
+) -> Result<(), String> {
+    let state = app_handle.state::<State>();
+    let mut store = state.0.lock().unwrap();
+
+    if store.panel.is_none() {
+        store.panel = Some(create_spotlight_panel(&window));
+    }
+
+    if !store.global_click_monitor_installed {
+        install_global_click_monitor(store.panel.as_ref().unwrap().clone())?;
+        store.global_click_monitor_installed = true;
+    }
+
+    Ok(())
 }
 
 // fn register_shortcut(app_handle: AppHandle<Wry>) {
@@ -300,6 +310,15 @@ mod tests {
         assert_eq!(left.x, 0.0);
         assert_eq!(right.x, 1152.0);
     }
+
+    #[test]
+    fn observes_outside_mouse_down_events() {
+        let mask = dismissal_event_mask();
+
+        assert!(mask.contains(NSEventMask::NSLeftMouseDownMask));
+        assert!(mask.contains(NSEventMask::NSRightMouseDownMask));
+        assert!(mask.contains(NSEventMask::NSOtherMouseDownMask));
+    }
 }
 
 extern "C" {
@@ -451,14 +470,6 @@ impl RawNSPanel {
         let _: () = unsafe { msg_send![self, setCollectionBehavior: behaviour] };
     }
 
-    fn set_delegate(&self, delegate: Option<Id<RawNSPanelDelegate>>) {
-        if let Some(del) = delegate {
-            let _: () = unsafe { msg_send![self, setDelegate: del] };
-        } else {
-            let _: () = unsafe { msg_send![self, setDelegate: self] };
-        }
-    }
-
     /// Create an NSPanel from Tauri's NSWindow
     fn from(ns_window: id) -> Id<Self> {
         let ns_panel: id = unsafe { msg_send![Self::class(), class] };
@@ -475,74 +486,33 @@ impl INSObject for RawNSPanel {
     }
 }
 
-#[allow(dead_code)]
-const DELEGATE_CLS_NAME: &str = "RawNSPanelDelegate";
+fn dismissal_event_mask() -> NSEventMask {
+    NSEventMask::NSLeftMouseDownMask
+        | NSEventMask::NSRightMouseDownMask
+        | NSEventMask::NSOtherMouseDownMask
+}
 
-#[allow(dead_code)]
-struct RawNSPanelDelegate {}
-
-impl RawNSPanelDelegate {
-    #[allow(dead_code)]
-    fn get_class() -> &'static Class {
-        Class::get(DELEGATE_CLS_NAME).unwrap_or_else(Self::define_class)
-    }
-
-    #[allow(dead_code)]
-    fn define_class() -> &'static Class {
-        let mut cls = ClassDecl::new(DELEGATE_CLS_NAME, class!(NSObject))
-            .unwrap_or_else(|| panic!("Unable to register {} class", DELEGATE_CLS_NAME));
-
-        cls.add_protocol(
-            Protocol::get("NSWindowDelegate").expect("Failed to get NSWindowDelegate protocol"),
-        );
-
-        unsafe {
-            cls.add_ivar::<id>("panel");
-
-            cls.add_method(
-                sel!(setPanel:),
-                Self::set_panel as extern "C" fn(&mut Object, Sel, id),
-            );
-
-            cls.add_method(
-                sel!(windowDidBecomeKey:),
-                Self::window_did_become_key as extern "C" fn(&Object, Sel, id),
-            );
-
-            cls.add_method(
-                sel!(windowDidResignKey:),
-                Self::window_did_resign_key as extern "C" fn(&Object, Sel, id),
-            );
+fn install_global_click_monitor(panel: ShareId<RawNSPanel>) -> Result<(), String> {
+    let handler = ConcreteBlock::new(move |_: id| {
+        if panel.is_visible() {
+            panel.order_out(None);
         }
+    })
+    .copy();
 
-        cls.register()
+    let monitor: id = unsafe {
+        msg_send![
+            class!(NSEvent),
+            addGlobalMonitorForEventsMatchingMask: dismissal_event_mask()
+            handler: &*handler
+        ]
+    };
+
+    if monitor == nil {
+        return Err("failed to install global mouse monitor for panel dismissal".into());
     }
 
-    extern "C" fn set_panel(this: &mut Object, _: Sel, panel: id) {
-        unsafe { this.set_ivar("panel", panel) };
-    }
-
-    extern "C" fn window_did_become_key(_: &Object, _: Sel, _: id) {}
-
-    /// Hide panel when it's no longer the key window
-    extern "C" fn window_did_resign_key(this: &Object, _: Sel, _: id) {
-        let panel: id = unsafe { *this.get_ivar("panel") };
-        let _: () = unsafe { msg_send![panel, orderOut: nil] };
-    }
-}
-
-unsafe impl Message for RawNSPanelDelegate {}
-
-impl INSObject for RawNSPanelDelegate {
-    fn class() -> &'static runtime::Class {
-        Self::get_class()
-    }
-}
-
-impl RawNSPanelDelegate {
-    pub fn set_panel_(&self, panel: ShareId<RawNSPanel>) {
-        let _: () = unsafe { msg_send![self, setPanel: panel] };
-    }
+    Ok(())
 }
 
 fn create_spotlight_panel(window: &Window<Wry>) -> ShareId<RawNSPanel> {
@@ -564,11 +534,6 @@ fn create_spotlight_panel(window: &Window<Wry>) -> ShareId<RawNSPanel> {
 
     // Ensures panel does not activate
     // panel.set_style_mask(NSWindowStyleMaskNonActivatingPanel);
-
-    // Setup delegate for an NSPanel to listen for window resign key and hide the panel
-    let delegate = RawNSPanelDelegate::new();
-    delegate.set_panel_(panel.clone());
-    panel.set_delegate(Some(delegate));
 
     panel
 }
