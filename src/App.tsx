@@ -4,12 +4,7 @@ import "./App.scss";
 import Search from "./components/Search";
 import Slider from "./components/Slider";
 import Clock from "./components/Clock";
-import {
-  enable as autoStartEnable,
-  isEnabled as autoStartIsEnabled,
-  disable as autoStartDisable,
-} from "tauri-plugin-autostart-api";
-import ToggleButton from "./components/ToggleButton";
+import Settings from "./components/Settings";
 import { WallClock, settingsManager } from "./config/settings-manager";
 import useRequestAnimationFrame from "./hooks/useRequestAnimationFrame";
 import { getVersion } from "@tauri-apps/api/app";
@@ -20,7 +15,6 @@ function App() {
   const [is24Hours, setIs24Hours] = useState(
     settingsManager.getCache("userSettings.is24Hours")
   );
-  const [isSettingHidden, setIsSettingHidden] = useState(false);
   const [clocks, setClocks] = useState<WallClock[]>(
     settingsManager.getCache("clocks")
   );
@@ -52,10 +46,22 @@ function App() {
   }, []);
   
 
-  const updateSettings = (key: string, value: any) => {
-    settingsManager.setCache(("userSettings." + key) as any, value);
-    setIs24Hours(settingsManager.getCache("userSettings.is24Hours"));
-    settingsManager.syncCache();
+  const updateTimeFormat = async (nextIs24Hours: boolean) => {
+    const previousIs24Hours = settingsManager.getCache(
+      "userSettings.is24Hours"
+    );
+    settingsManager.setCache("userSettings.is24Hours", nextIs24Hours);
+
+    try {
+      await settingsManager.syncCache();
+      setIs24Hours(nextIs24Hours);
+    } catch (error) {
+      settingsManager.setCache(
+        "userSettings.is24Hours",
+        previousIs24Hours
+      );
+      throw error;
+    }
   };
 
   return (
@@ -78,46 +84,12 @@ function App() {
           );
         })}
       </section>
-      <section className="collapse">
-        <button
-          className={isSettingHidden ? "btn toggle down" : "btn toggle"}
-          onClick={() => setIsSettingHidden(!isSettingHidden)}
-        >
-          &nbsp;
-        </button>
-      </section>
-      <section className={isSettingHidden ? "hidden" : ""}>
-        {/* <ToggleButton
-          label={"Date"}
-          onEnable={() => updateSettings("showDate", true)}
-          onDisable={() => updateSettings("showDate", false)}
-          defaultValue={settingsManager.getCache("userSettings.showDate")}
-        /> */}
-        <ToggleButton
-          label={"24 Hours"}
-          onEnable={() => updateSettings("is24Hours", true)}
-          onDisable={() => updateSettings("is24Hours", false)}
-          defaultValue={is24Hours}
-        />
-        {/* <ToggleButton
-          label={"Compact View"}
-          onEnable={() => updateSettings("compactView", true)}
-          onDisable={() => updateSettings("compactView", false)}
-          defaultValue={settingsManager.getCache("userSettings.compactView")}
-        /> */}
-        <ToggleButton
-          label={"Open at Login"}
-          onEnable={() => autoStartEnable()}
-          onDisable={() => autoStartDisable()}
-          defaultValue={autoStartIsEnabled()}
-        />
-        <section className="settings">
-          <button onClick={() => simpleUpdateRoutine(setVersion)} className="btn update clearfix">
-            <span className="update-message">Check for Update</span>
-            <span className="version gray">v{version}</span>
-          </button>
-        </section>
-      </section>
+      <Settings
+        is24Hours={is24Hours}
+        on24HourChange={updateTimeFormat}
+        version={version}
+        onCheckForUpdates={() => simpleUpdateRoutine(setVersion)}
+      />
       <section className="quit">
         <button onClick={() => invoke("quit")} className="btn exit">
           Quit&nbsp;<span className="app-name"></span>

@@ -15,4 +15,10 @@ button {
   }
 
   &.button-toggle:hover { background:#33373c; }
+  &.button-toggle:disabled {
+    cursor: default;
+    opacity: .55;
+  }
+
+  &.button-toggle:disabled:hover { background:transparent; }
 }

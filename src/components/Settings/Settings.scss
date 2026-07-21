@@ -1,0 +1,51 @@
+.settings-disclosure {
+  border-bottom: none !important;
+}
+
+.settings-toggle {
+  justify-content: space-between;
+}
+
+.settings-toggle::after {
+  width: 16px;
+  height: 16px;
+  content: "";
+  background: url("../../static/collapse-darkmode.svg") no-repeat center center;
+  background-size: 16px 16px;
+  transform: rotate(0deg);
+}
+
+.settings-toggle[aria-expanded="true"]::after {
+  transform: rotate(180deg);
+}
+
+.settings-panel[hidden] {
+  display: none;
+}
+
+.settings-toggle:focus-visible,
+.settings-content button:focus-visible {
+  box-shadow: inset 0 0 0 2px #2278ff;
+}
+
+.settings-content button:disabled {
+  cursor: default;
+  opacity: .55;
+}
+
+.settings-content button:disabled:hover {
+  background: transparent;
+}
+
+.settings-error {
+  padding: 8px 20px 10px 30px;
+  color: #ff9b94;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-content .update.loading::before {
+    animation: none;
+  }
+}
