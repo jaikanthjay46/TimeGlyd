@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { formatTimeNowLux, isSunUpLux } from "../../utils/time";
-import { WallClock, settingsManager } from "../../config/settings-manager";
+import { WallClock, updateSettings } from "../../config/settings-manager";
 import useRequestAnimationFrame from "../../hooks/useRequestAnimationFrame";
 import './Clock.scss'; 
 import { useDebounceCallback } from 'usehooks-ts'
@@ -24,18 +24,25 @@ function Clock({ globalTimeOffsetMinutes, timezoneOffsetHours, timeZoneId, is24H
 
   const handleNameUpdate = async (newName: string|null) => {
     if (!newName) return;
-    
-    const clocks = settingsManager.getCache('clocks');
-    clocks[parseInt(id)].clockName = newName;
-    await settingsManager.set('clocks', clocks);
+
+    const clocks = await updateSettings((settings) => {
+      const updatedClocks = settings.clocks.map((clock, index) =>
+        index === parseInt(id) ? { ...clock, clockName: newName } : clock
+      );
+      settings.clocks = updatedClocks;
+      return updatedClocks;
+    });
     updateNewClocks(clocks);
   }
 
   const deleteClock = async () => {
-    const clocks = settingsManager.getCache('clocks');
-    clocks.splice(parseInt(id), 1)
-    await settingsManager.set('clocks', clocks);
-    console.log(clocks);
+    const clocks = await updateSettings((settings) => {
+      const updatedClocks = settings.clocks.filter(
+        (_, index) => index !== parseInt(id)
+      );
+      settings.clocks = updatedClocks;
+      return updatedClocks;
+    });
     updateNewClocks(clocks)
   }
 

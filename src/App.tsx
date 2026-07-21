@@ -5,7 +5,16 @@ import Search from "./components/Search";
 import Slider from "./components/Slider";
 import Clock from "./components/Clock";
 import Settings from "./components/Settings";
-import { WallClock, settingsManager } from "./config/settings-manager";
+import ShortcutRecorder from "./components/ShortcutRecorder";
+import {
+  WallClock,
+  settingsManager,
+  updateSettings,
+} from "./config/settings-manager";
+import {
+  initializeGlobalShortcut,
+  updateGlobalShortcut,
+} from "./config/shortcut-manager";
 import useRequestAnimationFrame from "./hooks/useRequestAnimationFrame";
 import { getVersion } from "@tauri-apps/api/app";
 import { simpleUpdateRoutine } from "./utils/update";
@@ -18,20 +27,53 @@ function App() {
   const [clocks, setClocks] = useState<WallClock[]>(
     settingsManager.getCache("clocks")
   );
+  const [globalShortcut, setGlobalShortcut] = useState(
+    settingsManager.getCache("globalShortcut")
+  );
+  const [shortcutError, setShortcutError] = useState<string>();
+  const [isShortcutInitializing, setIsShortcutInitializing] =
+    useState(true);
   const [version, setVersion] = useState<string>();
 
   // Initalise App
   useLayoutEffect(() => {
-    invoke("init_spotlight_window").catch((error) => {
-      console.error("Failed to initialise the menu bar panel", error);
-    });
+    let isCurrent = true;
+
+    initializeGlobalShortcut()
+      .then((update) => {
+        if (isCurrent) {
+          setGlobalShortcut(update.active);
+          setShortcutError(update.error ?? undefined);
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setShortcutError(
+            `Unable to initialise the global shortcut: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsShortcutInitializing(false);
+        }
+      });
+
     getVersion().then((appVersion) => {
-      setVersion(
-        import.meta.env.VITE_LOCAL_BUILD_REVISION
-          ? `${appVersion}+${import.meta.env.VITE_LOCAL_BUILD_REVISION}`
-          : appVersion
-      );
+      if (isCurrent) {
+        setVersion(
+          import.meta.env.VITE_LOCAL_BUILD_REVISION
+            ? `${appVersion}+${import.meta.env.VITE_LOCAL_BUILD_REVISION}`
+            : appVersion
+        );
+      }
     });
+
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   // React To Window Size Changes
@@ -47,20 +89,24 @@ function App() {
   
 
   const updateTimeFormat = async (nextIs24Hours: boolean) => {
-    const previousIs24Hours = settingsManager.getCache(
-      "userSettings.is24Hours"
-    );
-    settingsManager.setCache("userSettings.is24Hours", nextIs24Hours);
+    await updateSettings((settings) => {
+      settings.userSettings.is24Hours = nextIs24Hours;
+    });
+    setIs24Hours(nextIs24Hours);
+  };
+
+  const changeGlobalShortcut = async (requested: string | null) => {
+    setShortcutError(undefined);
 
     try {
-      await settingsManager.syncCache();
-      setIs24Hours(nextIs24Hours);
+      await initializeGlobalShortcut();
+      const update = await updateGlobalShortcut(requested);
+      setGlobalShortcut(update.active);
+      setShortcutError(update.error ?? undefined);
     } catch (error) {
-      settingsManager.setCache(
-        "userSettings.is24Hours",
-        previousIs24Hours
+      setShortcutError(
+        error instanceof Error ? error.message : String(error)
       );
-      throw error;
     }
   };
 
@@ -89,6 +135,14 @@ function App() {
         on24HourChange={updateTimeFormat}
         version={version}
         onCheckForUpdates={() => simpleUpdateRoutine(setVersion)}
+        shortcutControl={
+          <ShortcutRecorder
+            value={globalShortcut}
+            disabled={isShortcutInitializing}
+            error={shortcutError}
+            onChange={changeGlobalShortcut}
+          />
+        }
       />
       <section className="quit">
         <button onClick={() => invoke("quit")} className="btn exit">

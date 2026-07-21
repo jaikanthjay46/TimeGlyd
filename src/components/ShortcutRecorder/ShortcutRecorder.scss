@@ -1,0 +1,65 @@
+.shortcut-setting {
+  padding: 9px 20px 10px 12px;
+}
+
+.shortcut-label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+}
+
+.shortcut-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.shortcut-recorder,
+.shortcut-clear {
+  min-height: 28px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 4px;
+  color: #fff;
+  background: #25292e;
+  font: inherit;
+}
+
+.shortcut-recorder {
+  flex: 1;
+  padding: 5px 8px;
+  text-align: left;
+}
+
+.shortcut-clear {
+  padding: 5px 9px;
+}
+
+.shortcut-recorder:hover,
+.shortcut-clear:hover {
+  background: #33373c;
+}
+
+.shortcut-recorder.recording {
+  border-color: #2278ff;
+  box-shadow: inset 0 0 0 1px #2278ff;
+}
+
+.shortcut-recorder:focus-visible,
+.shortcut-clear:focus-visible {
+  box-shadow: inset 0 0 0 2px #2278ff;
+}
+
+.shortcut-help,
+.shortcut-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.shortcut-help {
+  color: rgba(255, 255, 255, .68);
+}
+
+.shortcut-error {
+  color: #ff9b94;
+}

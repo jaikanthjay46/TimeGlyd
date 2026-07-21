@@ -3467,6 +3467,7 @@ dependencies = [
  "objc_id",
  "serde",
  "serde_json",
+ "tao",
  "tauri",
  "tauri-build",
  "tauri-plugin-autostart",

@@ -34,6 +34,7 @@ fn main() {
     tauri::Builder::default()
         .system_tray(SystemTray::new()) // .with_menu(system_tray_menu)
         .manage(spotlight::State::default())
+        .manage(spotlight::ShortcutManagerState::default())
         .on_system_tray_event(move |app, event| match event {
             SystemTrayEvent::LeftClick { position, size, .. } => {
                 if let Some(panel) = panel!(app) {
@@ -70,6 +71,7 @@ fn main() {
             quit,
             set_size,
             spotlight::init_spotlight_window,
+            spotlight::set_global_shortcut,
             spotlight::show_spotlight,
             spotlight::hide_spotlight
         ])

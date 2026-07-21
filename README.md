@@ -12,6 +12,7 @@ TimeGlyd helps remote teams navigate time zones with ease and privacy. The app r
 - Multiple time zones: Add as many time zones as you need for every teammate you work with.
 - Timetravel: Use the time travel slider to seamlessly plan across timelines and make meeting scheduling a breeze.
 - Versatile time format: Switch between 24-hour and AM/PM styles in a single touch for your convenience.
+- Optional global shortcut: Configure any supported macOS key combination, including Hyper-style Command+Control+Option+Shift chords, to open TimeGlyd from anywhere.
 - Uncompromised privacy: TimeGlyd doesn't call home for anything. There is no data collection or telemetry, ensuring top-notch security and complete offline functionality, even offline search.
 - Regular updates: The app is constantly improving based on user feedback. Your needs shape the future updates of TimeGlyd.
 - Ultra-lightweight: Weighing just 10MB, TimeGlyd is a feather-light yet mighty force compared to the bulky ~200MB electron apps. It provides more efficiency with less storage.
@@ -25,6 +26,12 @@ To quickly start using TimeGlyd, follow these steps:
 1. Download the universal binary from [https://timeglyd.jaikanthj.com](https://timeglyd.jaikanthj.com).
 2. Double click the dmg to lauch finder
 3. Drag and Drop to your applications folder and launch using spotlight.
+
+### Global shortcut
+
+TimeGlyd does not claim a global shortcut by default. Open **Settings**, select **Not set** beside **Keyboard Shortcut**, then press the combination you want to use. Select **Clear** to disable it again.
+
+Hyper-key remaps are supported as standard Command+Control+Option+Shift combinations. macOS does not reliably report when another app uses the same global shortcut, so choose a different combination if both apps respond.
 
 ## Development
 

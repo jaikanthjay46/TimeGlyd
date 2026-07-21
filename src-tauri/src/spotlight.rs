@@ -1,7 +1,11 @@
 use std::{ffi::c_void, sync::Mutex};
 
 use objc_id::{Id, ShareId};
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, Runtime, Window, Wry};
+use serde::Serialize;
+use tao::{accelerator::Accelerator, keyboard::KeyCode};
+use tauri::{
+    AppHandle, GlobalShortcutManager, Manager, PhysicalPosition, PhysicalSize, Runtime, Window, Wry,
+};
 
 use block::ConcreteBlock;
 use cocoa::{
@@ -33,6 +37,38 @@ pub struct Store {
 
 #[derive(Default)]
 pub struct State(pub Mutex<Store>);
+
+#[derive(Default)]
+struct ShortcutStore {
+    active: Option<String>,
+    panel: Option<ShareId<RawNSPanel>>,
+}
+
+#[derive(Default)]
+pub struct ShortcutManagerState(Mutex<ShortcutStore>);
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShortcutUpdate {
+    active: Option<String>,
+    error: Option<String>,
+}
+
+impl ShortcutUpdate {
+    fn success(active: Option<String>) -> Self {
+        Self {
+            active,
+            error: None,
+        }
+    }
+
+    fn failure(active: Option<String>, error: impl Into<String>) -> Self {
+        Self {
+            active,
+            error: Some(error.into()),
+        }
+    }
+}
 
 #[macro_export]
 macro_rules! set_state {
@@ -90,46 +126,219 @@ macro_rules! panel {
     }};
 }
 
-#[allow(dead_code)]
-static PANEL_LABEL: &str = "main";
-
 #[tauri::command]
 pub fn init_spotlight_window(
     app_handle: AppHandle<Wry>,
     window: Window<Wry>,
 ) -> Result<(), String> {
-    let state = app_handle.state::<State>();
-    let mut store = state.0.lock().unwrap();
+    let panel = {
+        let state = app_handle.state::<State>();
+        let mut store = state
+            .0
+            .lock()
+            .map_err(|_| "menu bar panel state is unavailable".to_string())?;
 
-    if store.panel.is_none() {
-        store.panel = Some(create_spotlight_panel(&window));
-    }
+        if store.panel.is_none() {
+            store.panel = Some(create_spotlight_panel(&window));
+        }
 
-    if !store.global_click_monitor_installed {
-        install_global_click_monitor(store.panel.as_ref().unwrap().clone())?;
-        store.global_click_monitor_installed = true;
-    }
+        let panel = store
+            .panel
+            .as_ref()
+            .ok_or_else(|| "menu bar panel was not created".to_string())?
+            .clone();
+
+        if !store.global_click_monitor_installed {
+            install_global_click_monitor(panel.clone())?;
+            store.global_click_monitor_installed = true;
+        }
+
+        panel
+    };
+
+    let shortcut_state = app_handle.state::<ShortcutManagerState>();
+    let mut shortcut_store = shortcut_state
+        .0
+        .lock()
+        .map_err(|_| "global shortcut state is unavailable".to_string())?;
+    shortcut_store.panel = Some(panel);
 
     Ok(())
 }
 
-// fn register_shortcut(app_handle: AppHandle<Wry>) {
-//     let mut shortcut_manager = app_handle.global_shortcut_manager();
-//     let window = app_handle.get_window(PANEL_LABEL).unwrap();
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ShortcutAction<'a> {
+    Register(&'a str),
+    Unregister(&'a str),
+}
 
-//     let panel = panel!(app_handle);
-//     shortcut_manager
-//         .register("Cmd+k", move || {
-//             position_window_at_the_center_of_the_monitor_with_cursor(&window);
+fn update_registered_shortcut<F>(
+    active: &mut Option<String>,
+    requested: Option<String>,
+    mut perform: F,
+) -> ShortcutUpdate
+where
+    F: for<'a> FnMut(ShortcutAction<'a>) -> Result<(), String>,
+{
+    let previous = active.clone();
+    if requested == previous {
+        return ShortcutUpdate::success(previous);
+    }
 
-//             if panel.is_visible() {
-//                 hide_spotlight(window.app_handle());
-//             } else {
-//                 show_spotlight(window.app_handle());
-//             };
-//         })
-//         .unwrap();
-// }
+    if requested.is_none() {
+        let Some(previous_shortcut) = previous else {
+            return ShortcutUpdate::success(None);
+        };
+
+        return match perform(ShortcutAction::Unregister(&previous_shortcut)) {
+            Ok(()) => {
+                *active = None;
+                ShortcutUpdate::success(None)
+            }
+            Err(error) => ShortcutUpdate::failure(
+                Some(previous_shortcut),
+                format!("Unable to disable the shortcut: {error}"),
+            ),
+        };
+    }
+
+    let requested_shortcut = requested.expect("requested shortcut was checked above");
+
+    if let Some(previous_shortcut) = previous.as_deref() {
+        if let Err(error) = perform(ShortcutAction::Unregister(previous_shortcut)) {
+            return ShortcutUpdate::failure(
+                previous,
+                format!("Unable to change the shortcut: {error}"),
+            );
+        }
+    }
+
+    match perform(ShortcutAction::Register(&requested_shortcut)) {
+        Ok(()) => {
+            *active = Some(requested_shortcut.clone());
+            ShortcutUpdate::success(Some(requested_shortcut))
+        }
+        Err(register_error) => {
+            let Some(previous_shortcut) = previous else {
+                *active = None;
+                return ShortcutUpdate::failure(None, register_error);
+            };
+
+            match perform(ShortcutAction::Register(&previous_shortcut)) {
+                Ok(()) => {
+                    *active = Some(previous_shortcut.clone());
+                    ShortcutUpdate::failure(
+                        Some(previous_shortcut),
+                        format!("{register_error}. The previous shortcut was restored."),
+                    )
+                }
+                Err(rollback_error) => {
+                    *active = None;
+                    ShortcutUpdate::failure(
+                        None,
+                        format!(
+                            "{register_error}. The previous shortcut could not be restored: {rollback_error}"
+                        ),
+                    )
+                }
+            }
+        }
+    }
+}
+
+fn validate_canonical_shortcut(shortcut: &str) -> Result<(), String> {
+    const MODIFIERS: [&str; 4] = ["Command", "Control", "Alt", "Shift"];
+
+    let tokens = shortcut.split('+').collect::<Vec<_>>();
+    if tokens.len() < 2 {
+        return Err("include at least one modifier and one key".into());
+    }
+
+    let mut previous_modifier_index = None;
+    for modifier in &tokens[..tokens.len() - 1] {
+        let modifier_index = MODIFIERS
+            .iter()
+            .position(|candidate| candidate == modifier)
+            .ok_or_else(|| format!("{modifier} is not a supported modifier"))?;
+
+        if previous_modifier_index.is_some_and(|previous| modifier_index <= previous) {
+            return Err("use Command, Control, Alt, and Shift in that order".into());
+        }
+        previous_modifier_index = Some(modifier_index);
+    }
+
+    let key = tokens
+        .last()
+        .expect("shortcut token count was checked above");
+    let key_code = key
+        .parse::<KeyCode>()
+        .map_err(|error| format!("{key} is not a supported key: {error}"))?;
+    if matches!(key_code, KeyCode::Unidentified(_)) {
+        return Err(format!("{key} is not a supported key"));
+    }
+
+    shortcut
+        .parse::<Accelerator>()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn set_global_shortcut(
+    app_handle: AppHandle<Wry>,
+    requested: Option<String>,
+) -> Result<ShortcutUpdate, String> {
+    let state = app_handle.state::<ShortcutManagerState>();
+    let mut store = state
+        .0
+        .lock()
+        .map_err(|_| "global shortcut state is unavailable".to_string())?;
+
+    if requested == store.active {
+        return Ok(ShortcutUpdate::success(store.active.clone()));
+    }
+
+    if let Some(shortcut) = requested.as_deref() {
+        if let Err(error) = validate_canonical_shortcut(shortcut) {
+            return Ok(ShortcutUpdate::failure(
+                store.active.clone(),
+                format!("That shortcut is not supported: {error}"),
+            ));
+        }
+    }
+
+    let panel = if requested.is_some() {
+        match store.panel.as_ref() {
+            Some(panel) => Some(panel.clone()),
+            None => {
+                return Ok(ShortcutUpdate::failure(
+                    store.active.clone(),
+                    "The menu bar panel is not ready yet",
+                ))
+            }
+        }
+    } else {
+        None
+    };
+
+    let mut shortcut_manager = app_handle.global_shortcut_manager();
+    let update = update_registered_shortcut(&mut store.active, requested, |action| match action {
+        ShortcutAction::Register(shortcut) => {
+            let panel = panel
+                .as_ref()
+                .expect("registration requires an initialized panel")
+                .clone();
+            shortcut_manager
+                .register(shortcut, move || toggle_spotlight_panel(&panel))
+                .map_err(|error| format!("Unable to register {shortcut}: {error}"))
+        }
+        ShortcutAction::Unregister(shortcut) => shortcut_manager
+            .unregister(shortcut)
+            .map_err(|error| format!("Unable to unregister {shortcut}: {error}")),
+    });
+
+    Ok(update)
+}
 
 #[tauri::command]
 pub fn show_spotlight(app_handle: AppHandle<Wry>) {
@@ -145,24 +354,46 @@ pub fn hide_spotlight(app_handle: AppHandle<Wry>) {
     }
 }
 
-/// Positions a given window at the center of the monitor with cursor
-// fn position_window_at_the_center_of_the_monitor_with_cursor(window: &Window<Wry>) {
-//     if let Some(monitor) = get_monitor_with_cursor() {
-//         let display_size = monitor.size.to_logical::<f64>(monitor.scale_factor);
-//         let display_pos = monitor.position.to_logical::<f64>(monitor.scale_factor);
+fn toggle_spotlight_panel(panel: &RawNSPanel) {
+    if panel.is_visible() {
+        panel.order_out(None);
+        return;
+    }
 
-//         let handle: id = window.ns_window().unwrap() as _;
-//         let win_frame: NSRect = unsafe { handle.frame() };
-//         let rect = NSRect {
-//             origin: NSPoint {
-//                 x: (display_pos.x + (display_size.width / 2.0)) - (win_frame.size.width / 2.0),
-//                 y: (display_pos.y + (display_size.height / 2.0)) - (win_frame.size.height / 2.0),
-//             },
-//             size: win_frame.size,
-//         };
-//         let _: () = unsafe { msg_send![handle, setFrame: rect display: YES] };
-//     }
-// }
+    if let Err(error) = position_panel_on_pointer_display(panel) {
+        eprintln!("TimeGlyd shortcut positioning warning: {error}");
+    }
+    panel.show();
+}
+
+fn position_panel_on_pointer_display(panel: &RawNSPanel) -> Result<(), String> {
+    let (monitor, used_fallback) = match get_monitor_with_cursor() {
+        Some(monitor) => (monitor, false),
+        None => (
+            get_primary_monitor().ok_or_else(|| "no macOS display is available".to_string())?,
+            true,
+        ),
+    };
+    let panel_frame = panel.frame();
+    panel.set_frame(NSRect {
+        origin: centered_panel_origin(monitor.visible_frame, panel_frame.size),
+        size: panel_frame.size,
+    });
+
+    if used_fallback {
+        Err("the pointer display was unavailable; used the primary display".into())
+    } else {
+        Ok(())
+    }
+}
+
+fn centered_panel_origin(visible_frame: NSRect, panel_size: NSSize) -> NSPoint {
+    NSPoint {
+        x: visible_frame.origin.x + ((visible_frame.size.width - panel_size.width).max(0.0) / 2.0),
+        y: visible_frame.origin.y
+            + ((visible_frame.size.height - panel_size.height).max(0.0) / 2.0),
+    }
+}
 
 pub fn position_window_near_position(
     window: &Window<Wry>,
@@ -212,6 +443,16 @@ struct Monitor {
     pub scale_factor: f64,
 }
 
+fn monitor_from_screen(screen: id) -> Monitor {
+    let visible_frame: NSRect = unsafe { msg_send![screen, visibleFrame] };
+    let scale_factor: CGFloat = unsafe { msg_send![screen, backingScaleFactor] };
+
+    Monitor {
+        visible_frame,
+        scale_factor,
+    }
+}
+
 /// Gets the Monitor with cursor
 fn get_monitor_with_cursor() -> Option<Monitor> {
     objc::rc::autoreleasepool(|| {
@@ -233,18 +474,20 @@ fn get_monitor_with_cursor() -> Option<Monitor> {
             }
         };
 
-        if let Some(screen) = screen_with_cursor {
-            let visible_frame: NSRect = unsafe { msg_send![screen, visibleFrame] };
-            let scale_factor: CGFloat = unsafe { msg_send![screen, backingScaleFactor] };
-            let scale_factor: f64 = scale_factor;
+        screen_with_cursor.map(monitor_from_screen)
+    })
+}
 
-            return Some(Monitor {
-                visible_frame,
-                scale_factor,
-            });
+fn get_primary_monitor() -> Option<Monitor> {
+    objc::rc::autoreleasepool(|| {
+        let screens: id = unsafe { msg_send![class!(NSScreen), screens] };
+        let screen: id = unsafe { msg_send![screens, firstObject] };
+
+        if screen == nil {
+            None
+        } else {
+            Some(monitor_from_screen(screen))
         }
-
-        None
     })
 }
 
@@ -288,6 +531,35 @@ mod tests {
     }
 
     #[test]
+    fn centers_panel_in_visible_frame() {
+        let origin =
+            centered_panel_origin(rect(0.0, 23.0, 1512.0, 956.0), NSSize::new(360.0, 400.0));
+
+        assert_eq!(origin.x, 576.0);
+        assert_eq!(origin.y, 301.0);
+    }
+
+    #[test]
+    fn centers_panel_on_negative_origin_display() {
+        let origin = centered_panel_origin(
+            rect(-1440.0, -1080.0, 1440.0, 1055.0),
+            NSSize::new(360.0, 400.0),
+        );
+
+        assert_eq!(origin.x, -900.0);
+        assert_eq!(origin.y, -752.5);
+    }
+
+    #[test]
+    fn anchors_oversized_panel_at_visible_frame_origin() {
+        let origin =
+            centered_panel_origin(rect(100.0, 200.0, 320.0, 240.0), NSSize::new(400.0, 300.0));
+
+        assert_eq!(origin.x, 100.0);
+        assert_eq!(origin.y, 200.0);
+    }
+
+    #[test]
     fn keeps_panel_inside_visible_screen_edges() {
         let visible_frame = rect(0.0, 0.0, 1512.0, 956.0);
         let panel_size = NSSize::new(360.0, 400.0);
@@ -318,6 +590,116 @@ mod tests {
         assert!(mask.contains(NSEventMask::NSLeftMouseDownMask));
         assert!(mask.contains(NSEventMask::NSRightMouseDownMask));
         assert!(mask.contains(NSEventMask::NSOtherMouseDownMask));
+    }
+
+    #[test]
+    fn accepts_hyper_shortcut_accelerator() {
+        assert!(validate_canonical_shortcut("Command+Control+Alt+Shift+T").is_ok());
+    }
+
+    #[test]
+    fn rejects_unknown_or_noncanonical_shortcuts() {
+        assert!(validate_canonical_shortcut("Command+NotAKey").is_err());
+        assert!(validate_canonical_shortcut("Shift+Command+T").is_err());
+        assert!(validate_canonical_shortcut("T").is_err());
+    }
+
+    #[test]
+    fn shortcut_registration_is_idempotent() {
+        let mut active = Some("Command+T".to_string());
+        let mut actions = Vec::<String>::new();
+
+        let update =
+            update_registered_shortcut(&mut active, Some("Command+T".to_string()), |action| {
+                actions.push(format!("{action:?}"));
+                Ok(())
+            });
+
+        assert_eq!(update, ShortcutUpdate::success(Some("Command+T".into())));
+        assert!(actions.is_empty());
+    }
+
+    #[test]
+    fn changes_registered_shortcut_transactionally() {
+        let mut active = Some("Command+T".to_string());
+        let mut actions = Vec::<String>::new();
+
+        let update = update_registered_shortcut(
+            &mut active,
+            Some("Command+Shift+T".to_string()),
+            |action| {
+                actions.push(format!("{action:?}"));
+                Ok(())
+            },
+        );
+
+        assert_eq!(
+            actions,
+            vec!["Unregister(\"Command+T\")", "Register(\"Command+Shift+T\")",]
+        );
+        assert_eq!(
+            update,
+            ShortcutUpdate::success(Some("Command+Shift+T".into()))
+        );
+        assert_eq!(active, Some("Command+Shift+T".into()));
+    }
+
+    #[test]
+    fn restores_previous_shortcut_when_registration_fails() {
+        let mut active = Some("Command+T".to_string());
+        let mut attempt = 0;
+
+        let update =
+            update_registered_shortcut(&mut active, Some("Command+Shift+T".to_string()), |_| {
+                attempt += 1;
+                if attempt == 2 {
+                    Err("new shortcut unavailable".into())
+                } else {
+                    Ok(())
+                }
+            });
+
+        assert_eq!(active, Some("Command+T".into()));
+        assert_eq!(update.active, active);
+        assert!(update
+            .error
+            .unwrap()
+            .contains("previous shortcut was restored"));
+    }
+
+    #[test]
+    fn clears_active_shortcut_when_rollback_fails() {
+        let mut active = Some("Command+T".to_string());
+        let mut attempt = 0;
+
+        let update =
+            update_registered_shortcut(&mut active, Some("Command+Shift+T".to_string()), |_| {
+                attempt += 1;
+                match attempt {
+                    1 => Ok(()),
+                    2 => Err("new shortcut unavailable".into()),
+                    _ => Err("previous shortcut unavailable".into()),
+                }
+            });
+
+        assert_eq!(active, None);
+        assert_eq!(update.active, None);
+        assert!(update
+            .error
+            .unwrap()
+            .contains("previous shortcut could not be restored"));
+    }
+
+    #[test]
+    fn keeps_shortcut_active_when_unregister_fails() {
+        let mut active = Some("Command+T".to_string());
+
+        let update =
+            update_registered_shortcut(&mut active, None, |_| Err("unregister failed".into()));
+
+        assert_eq!(active, Some("Command+T".into()));
+        assert_eq!(update.active, active);
+        assert!(update.error.unwrap().contains("Unable to disable"));
     }
 }
 
@@ -444,6 +826,14 @@ impl RawNSPanel {
 
     pub fn order_out(&self, sender: Option<id>) {
         let _: () = unsafe { msg_send![self, orderOut: sender.unwrap_or(nil)] };
+    }
+
+    fn frame(&self) -> NSRect {
+        unsafe { msg_send![self, frame] }
+    }
+
+    fn set_frame(&self, frame: NSRect) {
+        let _: () = unsafe { msg_send![self, setFrame: frame display: YES] };
     }
 
     fn content_view(&self) -> id {
