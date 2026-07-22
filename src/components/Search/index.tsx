@@ -3,7 +3,7 @@ import { City, cityMap, searchIndex } from "../../utils/search-index";
 import { convertHourToString } from "../../utils/time";
 import "./Search.scss";
 import lunr from "lunr";
-import { WallClock, settingsManager } from "../../config/settings-manager";
+import { WallClock, updateSettings } from "../../config/settings-manager";
 
 interface SearchResult {
   timeZoneId: string;
@@ -72,15 +72,27 @@ function Search({updateNewClocks}: Props) {
     setSearchResult(searchResult);
   }, [text]);
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+  const handleKeyDown = async (
+    event: KeyboardEvent<HTMLInputElement>
+  ): Promise<void> => {
     if (event.key === "Enter") {
-      const clocks = settingsManager.getCache('clocks');
-      clocks.push({clockName: searchResult?.fullName ?? 'UTC', 
-      timezoneOffsetHours: searchResult?.timeZoneOffset ?? 0, 
-      timeZoneId: searchResult?.timeZoneId ?? 'UTC'  });
-      updateNewClocks(clocks);
-      settingsManager.setCache('clocks', clocks);
-      settingsManager.syncCache();
+      try {
+        const clocks = await updateSettings((settings) => {
+          const updatedClocks = [
+            ...settings.clocks,
+            {
+              clockName: searchResult?.fullName ?? "UTC",
+              timezoneOffsetHours: searchResult?.timeZoneOffset ?? 0,
+              timeZoneId: searchResult?.timeZoneId ?? "UTC",
+            },
+          ];
+          settings.clocks = updatedClocks;
+          return updatedClocks;
+        });
+        updateNewClocks(clocks);
+      } catch (error) {
+        console.error("Unable to save the new clock", error);
+      }
     }
   };
 

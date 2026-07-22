@@ -4,15 +4,19 @@ import "./App.scss";
 import Search from "./components/Search";
 import Slider from "./components/Slider";
 import Clock from "./components/Clock";
+import Settings from "./components/Settings";
+import ShortcutRecorder from "./components/ShortcutRecorder";
 import {
-  enable as autoStartEnable,
-  isEnabled as autoStartIsEnabled,
-  disable as autoStartDisable,
-} from "tauri-plugin-autostart-api";
-import ToggleButton from "./components/ToggleButton";
-import { WallClock, settingsManager } from "./config/settings-manager";
+  WallClock,
+  settingsManager,
+  updateSettings,
+} from "./config/settings-manager";
+import {
+  initializeGlobalShortcut,
+  updateGlobalShortcut,
+} from "./config/shortcut-manager";
 import useRequestAnimationFrame from "./hooks/useRequestAnimationFrame";
-import { getVersion } from '@tauri-apps/api/app';
+import { getVersion } from "@tauri-apps/api/app";
 import { simpleUpdateRoutine } from "./utils/update";
 
 function App() {
@@ -20,16 +24,56 @@ function App() {
   const [is24Hours, setIs24Hours] = useState(
     settingsManager.getCache("userSettings.is24Hours")
   );
-  const [isSettingHidden, setIsSettingHidden] = useState(false);
   const [clocks, setClocks] = useState<WallClock[]>(
     settingsManager.getCache("clocks")
   );
+  const [globalShortcut, setGlobalShortcut] = useState(
+    settingsManager.getCache("globalShortcut") || null
+  );
+  const [shortcutError, setShortcutError] = useState<string>();
+  const [isShortcutInitializing, setIsShortcutInitializing] =
+    useState(true);
   const [version, setVersion] = useState<string>();
 
   // Initalise App
   useLayoutEffect(() => {
-    invoke("init_spotlight_window");
-    getVersion().then(setVersion);
+    let isCurrent = true;
+
+    initializeGlobalShortcut()
+      .then((update) => {
+        if (isCurrent) {
+          setGlobalShortcut(update.active);
+          setShortcutError(update.error ?? undefined);
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setShortcutError(
+            `Unable to initialise the global shortcut: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsShortcutInitializing(false);
+        }
+      });
+
+    getVersion().then((appVersion) => {
+      if (isCurrent) {
+        setVersion(
+          import.meta.env.VITE_LOCAL_BUILD_REVISION
+            ? `${appVersion}+${import.meta.env.VITE_LOCAL_BUILD_REVISION}`
+            : appVersion
+        );
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   // React To Window Size Changes
@@ -44,10 +88,26 @@ function App() {
   }, []);
   
 
-  const updateSettings = (key: string, value: any) => {
-    settingsManager.setCache(("userSettings." + key) as any, value);
-    setIs24Hours(settingsManager.getCache("userSettings.is24Hours"));
-    settingsManager.syncCache();
+  const updateTimeFormat = async (nextIs24Hours: boolean) => {
+    await updateSettings((settings) => {
+      settings.userSettings.is24Hours = nextIs24Hours;
+    });
+    setIs24Hours(nextIs24Hours);
+  };
+
+  const changeGlobalShortcut = async (requested: string | null) => {
+    setShortcutError(undefined);
+
+    try {
+      await initializeGlobalShortcut();
+      const update = await updateGlobalShortcut(requested);
+      setGlobalShortcut(update.active);
+      setShortcutError(update.error ?? undefined);
+    } catch (error) {
+      setShortcutError(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
   };
 
   return (
@@ -70,46 +130,20 @@ function App() {
           );
         })}
       </section>
-      <section className="collapse">
-        <button
-          className={isSettingHidden ? "btn toggle down" : "btn toggle"}
-          onClick={() => setIsSettingHidden(!isSettingHidden)}
-        >
-          &nbsp;
-        </button>
-      </section>
-      <section className={isSettingHidden ? "hidden" : ""}>
-        {/* <ToggleButton
-          label={"Date"}
-          onEnable={() => updateSettings("showDate", true)}
-          onDisable={() => updateSettings("showDate", false)}
-          defaultValue={settingsManager.getCache("userSettings.showDate")}
-        /> */}
-        <ToggleButton
-          label={"24 Hours"}
-          onEnable={() => updateSettings("is24Hours", true)}
-          onDisable={() => updateSettings("is24Hours", false)}
-          defaultValue={is24Hours}
-        />
-        {/* <ToggleButton
-          label={"Compact View"}
-          onEnable={() => updateSettings("compactView", true)}
-          onDisable={() => updateSettings("compactView", false)}
-          defaultValue={settingsManager.getCache("userSettings.compactView")}
-        /> */}
-        <ToggleButton
-          label={"Open at Login"}
-          onEnable={() => autoStartEnable()}
-          onDisable={() => autoStartDisable()}
-          defaultValue={autoStartIsEnabled()}
-        />
-        <section className="settings">
-          <button onClick={() => simpleUpdateRoutine(setVersion)} className="btn update clearfix">
-            <span className="update-message">Check for Update</span>
-            <span className="version gray">v{version}</span>
-          </button>
-        </section>
-      </section>
+      <Settings
+        is24Hours={is24Hours}
+        on24HourChange={updateTimeFormat}
+        version={version}
+        onCheckForUpdates={() => simpleUpdateRoutine(setVersion)}
+        shortcutControl={
+          <ShortcutRecorder
+            value={globalShortcut}
+            disabled={isShortcutInitializing}
+            error={shortcutError}
+            onChange={changeGlobalShortcut}
+          />
+        }
+      />
       <section className="quit">
         <button onClick={() => invoke("quit")} className="btn exit">
           Quit&nbsp;<span className="app-name"></span>

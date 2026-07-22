@@ -20,12 +20,15 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
+block = "0.1.6"
 core-graphics = {version = "0.22.3"}
 core-foundation = { version = "0.9.3" }
 cocoa = { version = "0.24.1" }
 objc =  { version = "0.2.7" }
 objc_id = {version = "0.1.1" }
 objc-foundation = { version = "0.1.1" }
+# Keep this in lockstep with Tauri's Tao version so validation matches registration.
+tao = { version = "=0.16.1", default-features = false }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
