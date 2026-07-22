@@ -12,13 +12,10 @@ const invokeShortcutUpdate = (requested: string | null) =>
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-let dirtyActiveShortcut: string | null | undefined;
-
 const persistActiveShortcut = async (active: string | null) => {
   await updateSettings((settings) => {
     settings.globalShortcut = active ?? "";
   });
-  dirtyActiveShortcut = undefined;
 };
 
 export const updateGlobalShortcut = async (
@@ -28,10 +25,7 @@ export const updateGlobalShortcut = async (
     settingsManager.getCache("globalShortcut") || null;
   const update = await invokeShortcutUpdate(requested);
 
-  if (
-    update.active === previousPersisted &&
-    dirtyActiveShortcut === undefined
-  ) {
+  if (update.active === previousPersisted) {
     return update;
   }
 
@@ -39,44 +33,16 @@ export const updateGlobalShortcut = async (
     await persistActiveShortcut(update.active);
     return update;
   } catch (persistenceError) {
-    let rollback: ShortcutUpdate;
-    try {
-      rollback = await invokeShortcutUpdate(previousPersisted);
-    } catch (rollbackError) {
-      throw new Error(
-        `Unable to save the shortcut (${errorMessage(
-          persistenceError
-        )}), and the previous shortcut could not be restored (${errorMessage(
-          rollbackError
-        )}). Restart TimeGlyd before choosing another shortcut.`
-      );
-    }
-
-    if (rollback.active === previousPersisted) {
-      dirtyActiveShortcut = undefined;
-    } else {
-      try {
-        await persistActiveShortcut(rollback.active);
-      } catch (rollbackPersistenceError) {
-        dirtyActiveShortcut = rollback.active;
-        return {
-          active: rollback.active,
-          error: `The active shortcut could not be saved: ${errorMessage(
-            rollbackPersistenceError
-          )}. Retry the change or restart TimeGlyd.`,
-        };
-      }
-    }
-
     return {
-      active: rollback.active,
+      active: update.active,
       error: [
-        `Unable to save the shortcut: ${errorMessage(persistenceError)}.`,
-        rollback.error ??
-          (rollback.active === previousPersisted
-            ? "The previous shortcut was restored."
-            : "The active shortcut was updated to match saved settings."),
-      ].join(" "),
+        update.error,
+        `The shortcut change is active for this session but was not saved: ${errorMessage(
+          persistenceError
+        )}. It will revert to the last saved value after restart.`,
+      ]
+        .filter((message): message is string => Boolean(message))
+        .join(" "),
     };
   }
 };

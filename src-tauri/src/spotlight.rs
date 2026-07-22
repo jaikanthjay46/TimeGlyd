@@ -75,13 +75,27 @@ fn status_item_panel_origin(
     visible_frame: NSRect,
     panel_size: NSSize,
 ) -> NSPoint {
-    let desired_x =
-        status_frame.origin.x + (status_frame.size.width / 2.0) - (panel_size.width / 2.0);
+    panel_origin_below_anchor(
+        status_frame.origin.x,
+        status_frame.size.width,
+        visible_frame,
+        panel_size,
+    )
+}
+
+fn panel_origin_below_anchor(
+    anchor_x: f64,
+    anchor_width: f64,
+    visible_frame: NSRect,
+    panel_size: NSSize,
+) -> NSPoint {
+    let desired_x = anchor_x + (anchor_width / 2.0) - (panel_size.width / 2.0);
     let min_x = visible_frame.origin.x;
     let max_x = (visible_frame.origin.x + visible_frame.size.width - panel_size.width).max(min_x);
 
     NSPoint {
         x: desired_x.clamp(min_x, max_x),
+        // visibleFrame uses global Cocoa coordinates and excludes the menu bar.
         y: visible_frame.origin.y + visible_frame.size.height - panel_size.height,
     }
 }
@@ -119,6 +133,8 @@ fn get_status_item_frame() -> Option<NSRect> {
             let level: i32 = unsafe { msg_send![window, level] };
             let frame: NSRect = unsafe { msg_send![window, frame] };
 
+            // Tao's status item is the app's narrow level-25 window. If it
+            // cannot be found, shortcut positioning falls back to the pointer display.
             if level == NS_STATUS_WINDOW_LEVEL
                 && frame.size.width > 0.0
                 && frame.size.width <= MAX_STATUS_ITEM_WIDTH
@@ -522,15 +538,7 @@ fn panel_origin(
 ) -> NSPoint {
     let tray_position = tray_position.to_logical::<f64>(scale_factor);
     let tray_size = tray_size.to_logical::<f64>(scale_factor);
-    let desired_x = tray_position.x + (tray_size.width / 2.0) - (panel_size.width / 2.0);
-    let min_x = visible_frame.origin.x;
-    let max_x = (visible_frame.origin.x + visible_frame.size.width - panel_size.width).max(min_x);
-
-    NSPoint {
-        x: desired_x.clamp(min_x, max_x),
-        // visibleFrame uses global Cocoa coordinates and excludes the menu bar.
-        y: visible_frame.origin.y + visible_frame.size.height - panel_size.height,
-    }
+    panel_origin_below_anchor(tray_position.x, tray_size.width, visible_frame, panel_size)
 }
 
 struct Monitor {

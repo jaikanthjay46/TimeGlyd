@@ -74,6 +74,8 @@ fn main() {
                     }
                     TrayClickAction::ShowWindow => {
                         spotlight::position_window_near_position(&window, position, size);
+                        // Showing on a worker lets the tray callback return before Tauri
+                        // bootstraps WebView navigation on its main event loop.
                         std::thread::spawn(move || {
                             if let Err(error) = window.show() {
                                 eprintln!(
