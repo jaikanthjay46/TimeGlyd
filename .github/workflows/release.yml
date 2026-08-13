@@ -87,7 +87,7 @@ jobs:
           releaseDraft: false
           prerelease: false
           updaterJsonKeepUniversal: true
-          args: --target universal-apple-darwin
+          args: --target universal-apple-darwin --verbose
   updater:
     needs: [release]
     runs-on: ubuntu-latest
