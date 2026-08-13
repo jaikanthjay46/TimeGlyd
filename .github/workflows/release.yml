@@ -47,6 +47,24 @@ jobs:
         run: pnpm install 
       - name: Install Rust Targets
         run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+
+      - name: Verify Apple notarization auth
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${APPLE_ID:-}" || { echo "APPLE_ID secret is missing"; exit 1; }
+          test -n "${APPLE_PASSWORD:-}" || { echo "APPLE_PASSWORD secret is missing"; exit 1; }
+          test -n "${APPLE_TEAM_ID:-}" || { echo "APPLE_TEAM_ID secret is missing"; exit 1; }
+          echo "APPLE_ID length: ${#APPLE_ID}"
+          echo "APPLE_PASSWORD length: ${#APPLE_PASSWORD}"
+          echo "APPLE_TEAM_ID: ${APPLE_TEAM_ID}"
+          xcrun notarytool history \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID"
       
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
