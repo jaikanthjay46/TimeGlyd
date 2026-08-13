@@ -1,9 +1,25 @@
+import { execFileSync } from "node:child_process";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const git = (...args: string[]) =>
+  execFileSync("git", args, { encoding: "utf8" }).trim();
+
+const localBuildRevision = () => {
+  const commit = git("rev-parse", "--short=8", "HEAD");
+  const dirty = git("status", "--porcelain").length > 0;
+
+  return `${commit}${dirty ? "-dirty" : ""}`;
+};
+
 // https://vitejs.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
+  define: {
+    "import.meta.env.VITE_LOCAL_BUILD_REVISION": JSON.stringify(
+      command === "serve" ? localBuildRevision() : null
+    ),
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   // prevent vite from obscuring rust errors

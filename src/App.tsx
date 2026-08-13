@@ -12,7 +12,7 @@ import {
 import ToggleButton from "./components/ToggleButton";
 import { WallClock, settingsManager } from "./config/settings-manager";
 import useRequestAnimationFrame from "./hooks/useRequestAnimationFrame";
-import { getVersion } from '@tauri-apps/api/app';
+import { getVersion } from "@tauri-apps/api/app";
 import { simpleUpdateRoutine } from "./utils/update";
 
 function App() {
@@ -28,8 +28,16 @@ function App() {
 
   // Initalise App
   useLayoutEffect(() => {
-    invoke("init_spotlight_window");
-    getVersion().then(setVersion);
+    invoke("init_spotlight_window").catch((error) => {
+      console.error("Failed to initialise the menu bar panel", error);
+    });
+    getVersion().then((appVersion) => {
+      setVersion(
+        import.meta.env.VITE_LOCAL_BUILD_REVISION
+          ? `${appVersion}+${import.meta.env.VITE_LOCAL_BUILD_REVISION}`
+          : appVersion
+      );
+    });
   }, []);
 
   // React To Window Size Changes
