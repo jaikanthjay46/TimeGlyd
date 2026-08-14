@@ -13,14 +13,14 @@ const ToggleButton = ({ label, checked, disabled = false, onChange }: Props) => 
       type="button"
       onClick={() => void onChange(!checked)}
       className="button-toggle"
-      aria-pressed={checked}
+      role="switch"
+      aria-checked={checked}
       disabled={disabled}
     >
-      <span
-        className={checked ? "icon icon-check" : "icon"}
-        aria-hidden="true"
-      />
-      {label}
+      <span>{label}</span>
+      <span className="toggle-track" aria-hidden="true">
+        <span className="toggle-thumb" />
+      </span>
     </button>
   );
 };

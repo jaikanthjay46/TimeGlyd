@@ -23,6 +23,19 @@ import useSettingsSnapshot from "./hooks/useSettingsSnapshot";
 import { simpleUpdateRoutine } from "./utils/update";
 import "./SettingsApp.scss";
 
+type SettingsSection = "clocks" | "general" | "shortcut" | "updates";
+
+const settingsSections: Array<{
+  id: SettingsSection;
+  icon: string;
+  label: string;
+}> = [
+  { id: "clocks", icon: "◷", label: "Clocks" },
+  { id: "general", icon: "⚙︎", label: "General" },
+  { id: "shortcut", icon: "⌨︎", label: "Shortcut" },
+  { id: "updates", icon: "ⓘ", label: "About" },
+];
+
 type ClockRowProps = {
   clock: WallClock;
   index: number;
@@ -133,7 +146,7 @@ const ClockRow = ({
           aria-label={`Delete ${clock.clockName}`}
           onClick={() => void onDelete(clock.id)}
         >
-          Delete
+          −
         </button>
       </div>
     </li>
@@ -162,6 +175,8 @@ const moveOptimistically = (
 const SettingsApp = () => {
   useSettingsShortcut();
   const { settings, error: loadError } = useSettingsSnapshot();
+  const [activeSection, setActiveSection] =
+    useState<SettingsSection>("clocks");
   const [displayClocks, setDisplayClocks] = useState<WallClock[]>([]);
   const [query, setQuery] = useState("");
   const [draggedId, setDraggedId] = useState<string>();
@@ -257,6 +272,10 @@ const SettingsApp = () => {
     if (result) setQuery("");
   };
 
+  const selectedSection =
+    settingsSections.find((section) => section.id === activeSection) ??
+    settingsSections[0];
+
   if (!settings) {
     return (
       <main className="settings-window loading-state">
@@ -267,175 +286,214 @@ const SettingsApp = () => {
 
   return (
     <main className="settings-window">
-      <header className="settings-window-header">
-        <h1>Settings</h1>
-        <p>Manage clocks and how TimeGlyd behaves.</p>
-      </header>
-
-      <div className="settings-window-content">
-        <section className="settings-window-section">
-          <div className="settings-section-heading">
-            <div>
-              <h2>Clocks</h2>
-              <p>Drag clocks into the order shown in the menu-bar panel.</p>
-            </div>
-            <span>{displayClocks.length}</span>
-          </div>
-
-          <div className="clock-add-row">
-            <input
-              autoFocus
-              value={query}
-              disabled={isBusy}
-              placeholder="Search for a city or time zone"
-              aria-label="Search for a city or time zone"
-              onChange={(event) => setQuery(event.currentTarget.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && searchResult) {
-                  event.preventDefault();
-                  void addSearchResult();
-                }
-              }}
-            />
+      <aside className="settings-sidebar">
+        <div className="settings-sidebar-title">TimeGlyd</div>
+        <nav aria-label="Settings sections">
+          {settingsSections.map((section) => (
             <button
+              key={section.id}
               type="button"
-              disabled={isBusy || !searchResult}
-              onClick={() => void addSearchResult()}
+              className={activeSection === section.id ? "selected" : ""}
+              aria-current={activeSection === section.id ? "page" : undefined}
+              onClick={() => setActiveSection(section.id)}
             >
-              Add
+              <span aria-hidden="true">{section.icon}</span>
+              {section.label}
             </button>
-          </div>
-          {searchResult ? (
-            <p className="clock-search-result">{searchResult.fullName}</p>
-          ) : null}
+          ))}
+        </nav>
+      </aside>
 
-          {displayClocks.length === 0 ? (
-            <p className="settings-empty-state">
-              Add a city to start building your clock list.
-            </p>
-          ) : (
-            <ul className="clock-settings-list">
-              {displayClocks.map((clock, index) => (
-                <ClockRow
-                  key={clock.id}
-                  clock={clock}
-                  index={index}
-                  count={displayClocks.length}
+      <section className="settings-detail">
+        <header className="settings-detail-header">
+          <h1>{selectedSection.label}</h1>
+          <p>
+            {activeSection === "clocks"
+              ? "Choose which clocks appear and their order."
+              : activeSection === "general"
+                ? "Set how TimeGlyd behaves on this Mac."
+                : activeSection === "shortcut"
+                  ? "Open TimeGlyd without reaching for the menu bar."
+                  : "Version information and software updates."}
+          </p>
+        </header>
+
+        <div className="settings-detail-content">
+          {activeSection === "clocks" ? (
+            <section className="settings-pane" aria-labelledby="clocks-pane">
+              <div className="clock-add-row">
+                <input
+                  autoFocus
+                  value={query}
                   disabled={isBusy}
-                  onDragStart={setDraggedId}
-                  onDrop={(targetIndex) => {
-                    if (draggedId) void reorder(draggedId, targetIndex);
-                    setDraggedId(undefined);
-                  }}
-                  onMove={reorder}
-                  onRename={async (id, name) => {
-                    return Boolean(
-                      await run("rename", () => renameClock(id, name))
-                    );
-                  }}
-                  onDelete={async (id) => {
-                    await run("delete", () => deleteClock(id));
+                  placeholder="Search for a city or time zone"
+                  aria-label="Search for a city or time zone"
+                  onChange={(event) => setQuery(event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && searchResult) {
+                      event.preventDefault();
+                      void addSearchResult();
+                    }
                   }}
                 />
-              ))}
-            </ul>
-          )}
-        </section>
+                <button
+                  type="button"
+                  className="primary-button"
+                  disabled={isBusy || !searchResult}
+                  onClick={() => void addSearchResult()}
+                >
+                  Add
+                </button>
+              </div>
+              {searchResult ? (
+                <p className="clock-search-result">{searchResult.fullName}</p>
+              ) : null}
 
-        <section className="settings-window-section">
-          <div className="settings-section-heading">
-            <div>
-              <h2>General</h2>
-              <p>Choose the defaults TimeGlyd uses on this Mac.</p>
-            </div>
-          </div>
-          <div className="settings-control-list">
-            <ToggleButton
-              label="24-hour time"
-              checked={settings.userSettings.is24Hours}
-              disabled={isBusy}
-              onChange={async (enabled) => {
-                await run("time-format", () => setTimeFormat(enabled));
-              }}
-            />
-            <ToggleButton
-              label="Open at Login"
-              checked={isAutoStartEnabled}
-              disabled={isBusy || isAutoStartLoading}
-              onChange={async (enabled) => {
-                setPending("auto-start");
-                setError(undefined);
-                try {
-                  if (enabled) await autoStartEnable();
-                  else await autoStartDisable();
-                  setIsAutoStartEnabled(enabled);
-                } catch (autoStartError) {
-                  setError(String(autoStartError));
-                } finally {
-                  setPending(undefined);
-                }
-              }}
-            />
-          </div>
-        </section>
+              <div className="settings-group clocks-group">
+                <div className="settings-group-header">
+                  <span>Menu-bar clocks</span>
+                  <span>{displayClocks.length}</span>
+                </div>
+                {displayClocks.length === 0 ? (
+                  <p className="settings-empty-state">
+                    Add a city to start building your clock list.
+                  </p>
+                ) : (
+                  <ul className="clock-settings-list">
+                    {displayClocks.map((clock, index) => (
+                      <ClockRow
+                        key={clock.id}
+                        clock={clock}
+                        index={index}
+                        count={displayClocks.length}
+                        disabled={isBusy}
+                        onDragStart={setDraggedId}
+                        onDrop={(targetIndex) => {
+                          if (draggedId) void reorder(draggedId, targetIndex);
+                          setDraggedId(undefined);
+                        }}
+                        onMove={reorder}
+                        onRename={async (id, name) => {
+                          return Boolean(
+                            await run("rename", () => renameClock(id, name))
+                          );
+                        }}
+                        onDelete={async (id) => {
+                          await run("delete", () => deleteClock(id));
+                        }}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          ) : null}
 
-        <section className="settings-window-section">
-          <div className="settings-section-heading">
-            <div>
-              <h2>Keyboard Shortcut</h2>
-              <p>Open TimeGlyd from anywhere without reaching for the menu bar.</p>
-            </div>
-          </div>
-          <ShortcutRecorder
-            value={activeShortcut}
-            disabled={isBusy}
-            error={shortcutError}
-            onChange={async (requested) => {
-              setPending("shortcut");
-              setShortcutError(undefined);
-              try {
-                const update = await updateGlobalShortcut(requested);
-                setActiveShortcut(update.active);
-                setShortcutError(update.error ?? undefined);
-              } catch (shortcutError) {
-                setShortcutError(String(shortcutError));
-              } finally {
-                setPending(undefined);
-              }
-            }}
-          />
-        </section>
+          {activeSection === "general" ? (
+            <section className="settings-pane">
+              <div className="settings-group">
+                <div className="native-setting-row">
+                  <div>
+                    <strong>24-hour time</strong>
+                    <span>Display times using the 24-hour clock.</span>
+                  </div>
+                  <ToggleButton
+                    label="24-hour time"
+                    checked={settings.userSettings.is24Hours}
+                    disabled={isBusy}
+                    onChange={async (enabled) => {
+                      await run("time-format", () => setTimeFormat(enabled));
+                    }}
+                  />
+                </div>
+                <div className="native-setting-row">
+                  <div>
+                    <strong>Open at Login</strong>
+                    <span>Launch TimeGlyd when you sign in.</span>
+                  </div>
+                  <ToggleButton
+                    label="Open at Login"
+                    checked={isAutoStartEnabled}
+                    disabled={isBusy || isAutoStartLoading}
+                    onChange={async (enabled) => {
+                      setPending("auto-start");
+                      setError(undefined);
+                      try {
+                        if (enabled) await autoStartEnable();
+                        else await autoStartDisable();
+                        setIsAutoStartEnabled(enabled);
+                      } catch (autoStartError) {
+                        setError(String(autoStartError));
+                      } finally {
+                        setPending(undefined);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
+          ) : null}
 
-        <section className="settings-window-section updates-section">
-          <div className="settings-section-heading">
-            <div>
-              <h2>Updates</h2>
-              <p>TimeGlyd checks only when you ask it to.</p>
-            </div>
-            <span>{version ? `v${version}` : ""}</span>
-          </div>
-          <button
-            type="button"
-            className="settings-primary-action"
-            disabled={isBusy}
-            onClick={() => {
-              setPending("update");
-              setError(undefined);
-              void simpleUpdateRoutine(setVersion)
-                .catch((updateError) => setError(String(updateError)))
-                .finally(() => setPending(undefined));
-            }}
-          >
-            Check for Update
-          </button>
-        </section>
+          {activeSection === "shortcut" ? (
+            <section className="settings-pane">
+              <div className="settings-group shortcut-group">
+                <ShortcutRecorder
+                  value={activeShortcut}
+                  disabled={isBusy}
+                  error={shortcutError}
+                  onChange={async (requested) => {
+                    setPending("shortcut");
+                    setShortcutError(undefined);
+                    try {
+                      const update = await updateGlobalShortcut(requested);
+                      setActiveShortcut(update.active);
+                      setShortcutError(update.error ?? undefined);
+                    } catch (shortcutError) {
+                      setShortcutError(String(shortcutError));
+                    } finally {
+                      setPending(undefined);
+                    }
+                  }}
+                />
+              </div>
+            </section>
+          ) : null}
 
-        {error ? (
-          <p className="settings-window-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </div>
+          {activeSection === "updates" ? (
+            <section className="settings-pane about-pane">
+              <div className="app-mark" aria-hidden="true">
+                TG
+              </div>
+              <h2>TimeGlyd</h2>
+              <p className="about-version">{version ? `Version ${version}` : ""}</p>
+              <p>
+                A private, offline-friendly time-zone companion for distributed
+                teams.
+              </p>
+              <button
+                type="button"
+                className="primary-button"
+                disabled={isBusy}
+                onClick={() => {
+                  setPending("update");
+                  setError(undefined);
+                  void simpleUpdateRoutine(setVersion)
+                    .catch((updateError) => setError(String(updateError)))
+                    .finally(() => setPending(undefined));
+                }}
+              >
+                Check for Updates…
+              </button>
+            </section>
+          ) : null}
+
+          {error ? (
+            <p className="settings-window-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      </section>
     </main>
   );
 };

@@ -73,11 +73,12 @@ async fn open_settings_window(app: tauri::AppHandle<Wry>) -> Result<(), String> 
 
     let window = WindowBuilder::new(&app, "settings", WindowUrl::App("index.html".into()))
         .title("TimeGlyd Settings")
-        .inner_size(560.0, 680.0)
-        .min_inner_size(460.0, 520.0)
+        .inner_size(760.0, 640.0)
+        .min_inner_size(660.0, 520.0)
         .resizable(true)
         .center()
         .focused(true)
+        .theme(Some(tauri::Theme::Dark))
         .visible(true)
         .build()
         .map_err(|error| format!("Unable to create the Settings window: {error}"))?;
