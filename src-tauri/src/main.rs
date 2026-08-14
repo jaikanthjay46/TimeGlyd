@@ -207,6 +207,9 @@ fn main() {
         .setup(|app| {
             app.manage(settings::SettingsStore::load(&app.handle()));
             spotlight::install_safe_send_event().map_err(std::io::Error::other)?;
+            if let Err(error) = spotlight::restore_status_item_visibility() {
+                eprintln!("{error}");
+            }
 
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);

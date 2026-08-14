@@ -16,11 +16,11 @@ use tauri::{
 use block::ConcreteBlock;
 use cocoa::{
     appkit::{
-        CGFloat, NSEventMask, NSEventModifierFlags, NSEventType, NSMainMenuWindowLevel, NSWindow,
-        NSWindowCollectionBehavior,
+        CGFloat, NSEventMask, NSEventModifierFlags, NSEventType, NSMainMenuWindowLevel,
+        NSVariableStatusItemLength, NSWindow, NSWindowCollectionBehavior,
     },
     base::{id, nil, BOOL, NO, YES},
-    foundation::{NSPoint, NSRect, NSSize},
+    foundation::{NSPoint, NSRect, NSSize, NSString},
 };
 use objc::{
     class,
@@ -589,6 +589,63 @@ pub fn install_safe_send_event() -> Result<(), String> {
             Ok(())
         })
         .clone()
+}
+
+unsafe fn find_tao_status_item(view: id) -> Option<id> {
+    if view == nil {
+        return None;
+    }
+
+    let responds_to_target: BOOL = msg_send![view, respondsToSelector: sel!(target)];
+    if responds_to_target == YES {
+        let target: id = msg_send![view, target];
+        if target != nil {
+            let target_class = runtime::object_getClass(target);
+            let class_name = std::ffi::CStr::from_ptr(runtime::class_getName(target_class));
+            if class_name.to_bytes() == b"TaoTrayHandler" {
+                let target = &*(target as *const Object);
+                let status_item: id = *target.get_ivar("status_bar");
+                return (status_item != nil).then_some(status_item);
+            }
+        }
+    }
+
+    let subviews: id = msg_send![view, subviews];
+    let count: usize = msg_send![subviews, count];
+    for index in 0..count {
+        let subview: id = msg_send![subviews, objectAtIndex: index];
+        if let Some(status_item) = find_tao_status_item(subview) {
+            return Some(status_item);
+        }
+    }
+    None
+}
+
+pub fn restore_status_item_visibility() -> Result<(), String> {
+    objc::rc::autoreleasepool(|| unsafe {
+        let app: id = msg_send![class!(NSApplication), sharedApplication];
+        let windows: id = msg_send![app, windows];
+        let count: usize = msg_send![windows, count];
+
+        for index in 0..count {
+            let window: id = msg_send![windows, objectAtIndex: index];
+            let level: i32 = msg_send![window, level];
+            if level != 25 {
+                continue;
+            }
+            let content_view: id = msg_send![window, contentView];
+            if let Some(status_item) = find_tao_status_item(content_view) {
+                let autosave_name =
+                    NSString::alloc(nil).init_str("com.jaikanthj.timeglyd.status-item.v2");
+                let _: () = msg_send![status_item, setAutosaveName: autosave_name];
+                let _: () = msg_send![status_item, setLength: NSVariableStatusItemLength];
+                let _: () = msg_send![status_item, setVisible: YES];
+                return Ok(());
+            }
+        }
+
+        Err("Unable to locate TimeGlyd's native status item".into())
+    })
 }
 
 fn panel_origin(
