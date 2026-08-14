@@ -145,9 +145,7 @@ fn get_status_item_frame() -> Option<NSRect> {
             // Tao's status item is the app's narrow level-25 window. If it
             // cannot be found, shortcut positioning falls back to the pointer display.
             if level == NS_STATUS_WINDOW_LEVEL
-                && frame.size.width > 0.0
-                && frame.size.width <= MAX_STATUS_ITEM_WIDTH
-                && frame.size.height > 0.0
+                && is_plausible_status_item_frame(frame, MAX_STATUS_ITEM_WIDTH)
             {
                 return Some(frame);
             }
@@ -155,6 +153,13 @@ fn get_status_item_frame() -> Option<NSRect> {
 
         None
     })
+}
+
+fn is_plausible_status_item_frame(frame: NSRect, max_width: f64) -> bool {
+    frame.size.width > 0.0
+        && frame.size.width <= max_width
+        && frame.size.height > 0.0
+        && (frame.origin.x != 0.0 || frame.origin.y != 0.0)
 }
 
 #[macro_export]
@@ -465,8 +470,7 @@ fn position_panel_near_status_item(panel: &RawNSPanel) -> Result<(), String> {
         y: status_frame.origin.y + (status_frame.size.height / 2.0),
     };
     let monitor = get_monitor_containing_point(status_center)
-        .or_else(get_primary_monitor)
-        .ok_or_else(|| "menu-bar display is unavailable".to_string())?;
+        .ok_or_else(|| "menu-bar icon is outside the connected displays".to_string())?;
     let panel_frame = panel.frame();
     panel.set_frame(NSRect {
         origin: status_item_panel_origin(status_frame, monitor.visible_frame, panel_frame.size),
@@ -721,6 +725,18 @@ mod tests {
 
         assert_eq!(origin.x, 629.0);
         assert_eq!(origin.y, 556.0);
+    }
+
+    #[test]
+    fn rejects_zero_origin_status_item_frames() {
+        assert!(!is_plausible_status_item_frame(
+            rect(0.0, 0.0, 18.0, 24.0),
+            100.0
+        ));
+        assert!(is_plausible_status_item_frame(
+            rect(1400.0, 956.0, 18.0, 24.0),
+            100.0
+        ));
     }
 
     #[test]
