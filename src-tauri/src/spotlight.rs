@@ -1,4 +1,10 @@
-use std::{ffi::c_void, sync::Mutex};
+use std::{
+    ffi::c_void,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Mutex, OnceLock,
+    },
+};
 
 use objc_id::{Id, ShareId};
 use serde::Serialize;
@@ -9,7 +15,10 @@ use tauri::{
 
 use block::ConcreteBlock;
 use cocoa::{
-    appkit::{CGFloat, NSEventMask, NSMainMenuWindowLevel, NSWindow, NSWindowCollectionBehavior},
+    appkit::{
+        CGFloat, NSEventMask, NSEventModifierFlags, NSEventType, NSMainMenuWindowLevel, NSWindow,
+        NSWindowCollectionBehavior,
+    },
     base::{id, nil, BOOL, NO, YES},
     foundation::{NSPoint, NSRect, NSSize},
 };
@@ -17,7 +26,7 @@ use objc::{
     class,
     declare::ClassDecl,
     msg_send,
-    runtime::{self, Class, Object, Sel},
+    runtime::{self, Class, Imp, Object, Sel},
     sel, sel_impl, Message,
 };
 use objc_foundation::INSObject;
@@ -50,8 +59,8 @@ pub struct ShortcutManagerState(Mutex<ShortcutStore>);
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ShortcutUpdate {
-    active: Option<String>,
-    error: Option<String>,
+    pub active: Option<String>,
+    pub error: Option<String>,
 }
 
 impl ShortcutUpdate {
@@ -527,6 +536,55 @@ pub fn is_window_visible(window: &Window<Wry>) -> bool {
     let handle: id = window.ns_window().unwrap() as _;
     let visible: BOOL = unsafe { msg_send![handle, isVisible] };
     visible == YES
+}
+
+pub fn activate_window(window: &Window<Wry>) {
+    let app: id = unsafe { msg_send![class!(NSApplication), sharedApplication] };
+    let _: () = unsafe { msg_send![app, activateIgnoringOtherApps: YES] };
+    let handle: id = window.ns_window().unwrap() as _;
+    let _: () = unsafe { msg_send![handle, makeKeyAndOrderFront: nil] };
+}
+
+type SendEvent = unsafe extern "C" fn(&Object, Sel, id);
+static ORIGINAL_SEND_EVENT: AtomicUsize = AtomicUsize::new(0);
+static SAFE_SEND_EVENT_INSTALL: OnceLock<Result<(), String>> = OnceLock::new();
+
+extern "C" fn safe_send_event(this: &Object, selector: Sel, event: id) {
+    unsafe {
+        let event_type: NSEventType = msg_send![event, type];
+        let modifiers: NSEventModifierFlags = msg_send![event, modifierFlags];
+        if event_type == NSEventType::NSKeyUp
+            && modifiers.contains(NSEventModifierFlags::NSCommandKeyMask)
+        {
+            let key_window: id = msg_send![this, keyWindow];
+            if key_window == nil {
+                return;
+            }
+        }
+
+        let implementation = ORIGINAL_SEND_EVENT.load(Ordering::SeqCst);
+        let original: SendEvent = std::mem::transmute(implementation);
+        original(this, selector, event);
+    }
+}
+
+pub fn install_safe_send_event() -> Result<(), String> {
+    SAFE_SEND_EVENT_INSTALL
+        .get_or_init(|| unsafe {
+            let app: id = msg_send![class!(NSApplication), sharedApplication];
+            let app_class = runtime::object_getClass(app);
+            let method = runtime::class_getInstanceMethod(app_class, sel!(sendEvent:));
+            if method.is_null() {
+                return Err("Unable to find NSApplication sendEvent:".into());
+            }
+            let original = runtime::method_getImplementation(method);
+            ORIGINAL_SEND_EVENT.store(original as usize, Ordering::SeqCst);
+            let replacement: Imp =
+                std::mem::transmute(safe_send_event as extern "C" fn(&Object, Sel, id));
+            runtime::method_setImplementation(method as *mut _, replacement);
+            Ok(())
+        })
+        .clone()
 }
 
 fn panel_origin(

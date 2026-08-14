@@ -10,6 +10,7 @@ TimeGlyd helps remote teams navigate time zones with ease and privacy. The app r
 
 - Designed for remote teams
 - Multiple time zones: Add as many time zones as you need for every teammate you work with.
+- Dedicated settings: Manage, rename, remove, and reorder clocks without cluttering the menu-bar panel.
 - Timetravel: Use the time travel slider to seamlessly plan across timelines and make meeting scheduling a breeze.
 - Versatile time format: Switch between 24-hour and AM/PM styles in a single touch for your convenience.
 - Optional global shortcut: Configure any supported macOS key combination, including Hyper-style Command+Control+Option+Shift chords, to open TimeGlyd from anywhere.
@@ -29,9 +30,13 @@ To quickly start using TimeGlyd, follow these steps:
 
 ### Global shortcut
 
-TimeGlyd does not claim a global shortcut by default. Open **Settings**, select **Not set** beside **Keyboard Shortcut**, then press the combination you want to use. Select **Clear** to disable it again.
+TimeGlyd does not claim a global shortcut by default. Open TimeGlyd from the menu bar, choose **Settings…**, select **Not set** under **Keyboard Shortcut**, then press the combination you want to use. Select **Clear** to disable it again.
 
 Hyper-key remaps are supported as standard Command+Control+Option+Shift combinations. macOS does not reliably report when another app uses the same global shortcut, so choose a different combination if both apps respond.
+
+### Manage clocks
+
+Choose **Settings…** from the menu-bar panel or press `⌘,` while TimeGlyd is active. The **Clocks** section lets you add, rename, delete, and drag clocks into the order shown in the panel. Move Up and Move Down controls provide the same reordering without drag-and-drop.
 
 ## Development
 

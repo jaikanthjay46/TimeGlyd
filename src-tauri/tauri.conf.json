@@ -15,20 +15,9 @@
       "iconPath": "icons/icon.png"
     },
     "allowlist": {
-      "all": true,
-      "shell": {
-        "all": true,
-        "open": true
-      },
-      "fs": {
-        "createDir": true,
-        "readDir": true,
-        "readFile": true,
-        "writeFile": true,
-        "scope": ["$APPCONFIG", "$APPCONFIG/*"]
-      },
-      "path": {
-        "all": true
+      "all": false,
+      "process": {
+        "relaunch": true
       }
     },
     "bundle": {
