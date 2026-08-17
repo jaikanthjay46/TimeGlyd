@@ -98,9 +98,16 @@ fn panel_origin_below_anchor(
     visible_frame: NSRect,
     panel_size: NSSize,
 ) -> NSPoint {
-    let desired_x = anchor_x + (anchor_width / 2.0) - (panel_size.width / 2.0);
     let min_x = visible_frame.origin.x;
-    let max_x = (visible_frame.origin.x + visible_frame.size.width - panel_size.width).max(min_x);
+    let screen_right = visible_frame.origin.x + visible_frame.size.width;
+    let max_x = (screen_right - panel_size.width).max(min_x);
+    let opens_right_x = anchor_x;
+    let opens_left_x = anchor_x + anchor_width - panel_size.width;
+    let desired_x = if opens_right_x + panel_size.width <= screen_right {
+        opens_right_x
+    } else {
+        opens_left_x
+    };
 
     NSPoint {
         x: desired_x.clamp(min_x, max_x),
@@ -734,7 +741,7 @@ mod tests {
             NSSize::new(360.0, 400.0),
         );
 
-        assert_eq!(origin.x, 932.0);
+        assert_eq!(origin.x, 1100.0);
         assert_eq!(origin.y, 556.0);
     }
 
@@ -748,7 +755,7 @@ mod tests {
             NSSize::new(360.0, 400.0),
         );
 
-        assert_eq!(origin.x, -768.0);
+        assert_eq!(origin.x, -600.0);
         assert_eq!(origin.y, -425.0);
     }
 
@@ -773,15 +780,41 @@ mod tests {
     }
 
     #[test]
-    fn positions_shortcut_panel_below_status_item() {
+    fn aligns_shortcut_panel_leading_edge_with_status_item() {
         let origin = status_item_panel_origin(
             rect(800.0, 956.0, 18.0, 24.0),
             rect(0.0, 0.0, 1512.0, 956.0),
             NSSize::new(360.0, 400.0),
         );
 
-        assert_eq!(origin.x, 629.0);
+        assert_eq!(origin.x, 800.0);
         assert_eq!(origin.y, 556.0);
+    }
+
+    #[test]
+    fn aligns_panel_trailing_edge_when_status_item_is_near_screen_edge() {
+        let origin = status_item_panel_origin(
+            rect(1400.0, 956.0, 18.0, 24.0),
+            rect(0.0, 0.0, 1512.0, 956.0),
+            NSSize::new(360.0, 400.0),
+        );
+
+        assert_eq!(origin.x, 1058.0);
+        assert_eq!(origin.x + 360.0, 1418.0);
+    }
+
+    #[test]
+    fn aligns_tray_click_panel_trailing_edge_on_retina_display() {
+        let origin = panel_origin(
+            PhysicalPosition::new(2800.0, 48.0),
+            PhysicalSize::new(36.0, 48.0),
+            2.0,
+            rect(0.0, 0.0, 1512.0, 956.0),
+            NSSize::new(360.0, 400.0),
+        );
+
+        assert_eq!(origin.x, 1058.0);
+        assert_eq!(origin.x + 360.0, 1418.0);
     }
 
     #[test]
