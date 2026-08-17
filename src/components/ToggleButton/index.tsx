@@ -1,36 +1,28 @@
-import React, { useEffect } from 'react'
-import './ToggleButton.scss'
-
-
+import "./ToggleButton.scss";
 
 type Props = {
-  label: string
-  defaultValue: boolean | Promise<boolean>
-  onEnable: () => void
-  onDisable: () => void
-}
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void | Promise<void>;
+};
 
-const ToggleButton = ({label, onEnable, onDisable, defaultValue}: Props) => {
-
-  const [isEnabled, setIsEnabled] = React.useState(false)
-  const toggle = () => {
-    setIsEnabled(!isEnabled);
-    isEnabled ? onDisable() : onEnable();
-  }
-
-  useEffect(() => {
-    Promise.resolve(defaultValue).then(function(value) {
-      setIsEnabled(value)
-    })
-  }, [defaultValue])
-
+const ToggleButton = ({ label, checked, disabled = false, onChange }: Props) => {
   return (
-    <div>
-      <button onClick={toggle} className='button-toggle'>
-      <span className={isEnabled ? 'icon icon-check' : 'icon'} ></span>
-      {label}</button>
-    </div>
-  )
-}
+    <button
+      type="button"
+      onClick={() => void onChange(!checked)}
+      className="button-toggle"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+    >
+      <span>{label}</span>
+      <span className="toggle-track" aria-hidden="true">
+        <span className="toggle-thumb" />
+      </span>
+    </button>
+  );
+};
 
-export default ToggleButton
+export default ToggleButton;

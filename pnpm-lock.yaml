@@ -32,9 +32,6 @@ importers:
       tauri-plugin-autostart-api:
         specifier: github:tauri-apps/tauri-plugin-autostart
         version: https://codeload.github.com/tauri-apps/tauri-plugin-autostart/tar.gz/4424517fbfb76ff3eaddebaec6482a56b480a514
-      tauri-settings:
-        specifier: ^0.3.2
-        version: 0.3.5
       usehooks-ts:
         specifier: ^2.13.0
         version: 2.16.0(react@18.3.1)
@@ -643,9 +640,6 @@ packages:
     resolution: {tarball: https://codeload.github.com/tauri-apps/tauri-plugin-autostart/tar.gz/4424517fbfb76ff3eaddebaec6482a56b480a514}
     version: 0.0.0
 
-  tauri-settings@0.3.5:
-    resolution: {integrity: sha512-07v+i6ig+z1eWHm9WYAvOpFPM7afeKZZmM0egIY0aLSleaZy33zEiKmefNKI+G8ymOAJX/ZYN1N1cM2lyGOiJw==}
-
   typescript@4.9.5:
     resolution: {integrity: sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==}
     engines: {node: '>=4.2.0'}
@@ -1184,8 +1178,6 @@ snapshots:
   tauri-plugin-autostart-api@https://codeload.github.com/tauri-apps/tauri-plugin-autostart/tar.gz/4424517fbfb76ff3eaddebaec6482a56b480a514:
     dependencies:
       '@tauri-apps/api': 1.6.0
-
-  tauri-settings@0.3.5: {}
 
   typescript@4.9.5: {}
 

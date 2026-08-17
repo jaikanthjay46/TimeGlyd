@@ -4,40 +4,39 @@ import "./App.scss";
 import Search from "./components/Search";
 import Slider from "./components/Slider";
 import Clock from "./components/Clock";
-import {
-  enable as autoStartEnable,
-  isEnabled as autoStartIsEnabled,
-  disable as autoStartDisable,
-} from "tauri-plugin-autostart-api";
-import ToggleButton from "./components/ToggleButton";
-import { WallClock, settingsManager } from "./config/settings-manager";
+import { initializeGlobalShortcut } from "./config/settings-client";
 import useRequestAnimationFrame from "./hooks/useRequestAnimationFrame";
-import { getVersion } from "@tauri-apps/api/app";
-import { simpleUpdateRoutine } from "./utils/update";
+import useSettingsSnapshot from "./hooks/useSettingsSnapshot";
+import useSettingsShortcut, {
+  openSettingsWindow,
+} from "./hooks/useSettingsShortcut";
 
 function App() {
+  useSettingsShortcut();
   const [globalTimeOffset, setGlobalTimeOffsetMinutes] = useState(0);
-  const [is24Hours, setIs24Hours] = useState(
-    settingsManager.getCache("userSettings.is24Hours")
-  );
-  const [isSettingHidden, setIsSettingHidden] = useState(false);
-  const [clocks, setClocks] = useState<WallClock[]>(
-    settingsManager.getCache("clocks")
-  );
-  const [version, setVersion] = useState<string>();
+  const { settings, error: settingsError } = useSettingsSnapshot();
+  const is24Hours = settings?.userSettings.is24Hours ?? false;
+  const clocks = settings?.clocks ?? [];
 
   // Initalise App
   useLayoutEffect(() => {
-    invoke("init_spotlight_window").catch((error) => {
-      console.error("Failed to initialise the menu bar panel", error);
-    });
-    getVersion().then((appVersion) => {
-      setVersion(
-        import.meta.env.VITE_LOCAL_BUILD_REVISION
-          ? `${appVersion}+${import.meta.env.VITE_LOCAL_BUILD_REVISION}`
-          : appVersion
-      );
-    });
+    let isCurrent = true;
+
+    initializeGlobalShortcut()
+      .then((update) => {
+        if (isCurrent && update.error) {
+          console.error(update.error);
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          console.error("Unable to initialise the global shortcut", error);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   // React To Window Size Changes
@@ -52,71 +51,40 @@ function App() {
   }, []);
   
 
-  const updateSettings = (key: string, value: any) => {
-    settingsManager.setCache(("userSettings." + key) as any, value);
-    setIs24Hours(settingsManager.getCache("userSettings.is24Hours"));
-    settingsManager.syncCache();
-  };
-
   return (
     <div className="app">
-      <Search updateNewClocks={(clocks) => setClocks([...clocks])} />
+      {settingsError ? (
+        <p className="settings-error" role="alert">
+          {settingsError}
+        </p>
+      ) : null}
+      <Search />
       <Slider is24Hour={is24Hours} onChange={setGlobalTimeOffsetMinutes} />
 
       <section className="clock">
-        {clocks.map((clock, index) => {
+        {clocks.map((clock) => {
           return (
             <Clock
+              key={clock.id}
               globalTimeOffsetMinutes={globalTimeOffset}
               timezoneOffsetHours={clock.timezoneOffsetHours}
               timeZoneId={clock.timeZoneId}
               is24Hour={is24Hours}
               clockName={clock.clockName}
-              id={index.toString()}
-              updateNewClocks={(clocks) => setClocks([...clocks])}
+              id={clock.id}
             />
           );
         })}
       </section>
-      <section className="collapse">
+      <section className="settings-link">
         <button
-          className={isSettingHidden ? "btn toggle down" : "btn toggle"}
-          onClick={() => setIsSettingHidden(!isSettingHidden)}
+          type="button"
+          className="btn"
+          onClick={() => void openSettingsWindow()}
         >
-          &nbsp;
+          Settings…
+          <span className="version gray">⌘,</span>
         </button>
-      </section>
-      <section className={isSettingHidden ? "hidden" : ""}>
-        {/* <ToggleButton
-          label={"Date"}
-          onEnable={() => updateSettings("showDate", true)}
-          onDisable={() => updateSettings("showDate", false)}
-          defaultValue={settingsManager.getCache("userSettings.showDate")}
-        /> */}
-        <ToggleButton
-          label={"24 Hours"}
-          onEnable={() => updateSettings("is24Hours", true)}
-          onDisable={() => updateSettings("is24Hours", false)}
-          defaultValue={is24Hours}
-        />
-        {/* <ToggleButton
-          label={"Compact View"}
-          onEnable={() => updateSettings("compactView", true)}
-          onDisable={() => updateSettings("compactView", false)}
-          defaultValue={settingsManager.getCache("userSettings.compactView")}
-        /> */}
-        <ToggleButton
-          label={"Open at Login"}
-          onEnable={() => autoStartEnable()}
-          onDisable={() => autoStartDisable()}
-          defaultValue={autoStartIsEnabled()}
-        />
-        <section className="settings">
-          <button onClick={() => simpleUpdateRoutine(setVersion)} className="btn update clearfix">
-            <span className="update-message">Check for Update</span>
-            <span className="version gray">v{version}</span>
-          </button>
-        </section>
       </section>
       <section className="quit">
         <button onClick={() => invoke("quit")} className="btn exit">
